@@ -1,0 +1,241 @@
+import axios from "axios";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import timeAgo from "../components/timeAgo";
+
+function DetailPost() {
+  const { postId } = useParams<{ postId: string }>();
+  const [post, setPost] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const [comments, setComments] = useState([]);
+  const [content, setContent] = useState("");
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  useEffect(() => {
+    const fetchPost = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:8000/api/posts/${postId}`
+        );
+        setPost(res.data.data || res.data); // tùy backend
+      } catch (err) {
+        console.error("Lỗi tải bài viết:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPost();
+  }, [postId]);
+  useEffect(() => {
+    axios
+      .get(`http://localhost:8000/api/posts/${postId}/comments`)
+      .then((res) => {
+        setComments(res.data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [postId]);
+
+  // Gửi bình luận mới
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!content.trim()) return;
+    const tempComment = {
+      id: Date.now(),
+      content,
+      created_at: new Date().toISOString(),
+      user: {
+        id: user?.id,
+        displayName: user?.displayName,
+        avatarUrl: user?.avatarUrl,
+      },
+    };
+    setComments([tempComment, ...comments]);
+    setContent("");
+    console.log(tempComment)
+
+    try {
+      const res = await axios.post(
+        `http://localhost:8000/api/posts/${postId}/comments`,
+        {
+          user_id: user?.id,
+          content,
+        }
+      );
+      // Cập nhật comment thật
+      setComments([res.data, ...comments]);
+      setContent("");
+    } catch (error) {
+      console.error(error);
+    }
+  };
+  console.log(comments);
+
+  if (loading)
+    return (
+      <div className="flex justify-center items-center h-screen text-gray-500 dark:text-gray-300">
+        Đang tải bài viết...
+      </div>
+    );
+
+  if (!post)
+    return (
+      <div className="flex justify-center items-center h-screen text-red-500">
+        Không tìm thấy bài viết
+      </div>
+    );
+
+  return (
+    <div className="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+      <div className="layout-container flex h-full grow flex-col">
+        <div className="px-4 md:px-10 lg:px-40 flex flex-1 justify-center py-4 sm:py-1">
+          <div className="layout-content-container flex flex-col w-full max-w-[960px] flex-1 gap-6">
+            {/* === BẮT ĐẦU CHI TIẾT BÀI === */}
+            <div className="flex flex-col gap-4 bg-white dark:bg-background-dark rounded-xl p-4 sm:p-6 shadow-sm">
+              <h1 className="text-[#111418] dark:text-white tracking-tight text-[28px] md:text-[32px] font-bold leading-tight text-left">
+                {post.title}
+              </h1>
+
+              <div className="flex w-full flex-row items-start justify-start gap-3">
+                <div
+                  className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 shrink-0"
+                  style={{
+                    backgroundImage: `url("${
+                      post.creator?.avatarUrl ||
+                      "https://i.pravatar.cc/100?img=5"
+                    }")`,
+                  }}
+                ></div>
+
+                <div className="flex h-full flex-1 flex-col items-start justify-start gap-3">
+                  <div className="flex w-full flex-col sm:flex-row sm:items-start justify-start gap-x-3">
+                    <p className="text-[#111418] dark:text-white text-sm font-bold leading-normal tracking-[0.015em]">
+                      {post.creator?.displayName}
+                    </p>
+                    <p className="text-[#617589] dark:text-gray-400 text-sm font-normal leading-normal">
+                      {timeAgo(post.created_at)}
+                    </p>
+                  </div>
+
+                  <p
+                    className="text-[#343A40] dark:text-gray-300 text-base font-normal leading-relaxed space-y-4"
+                    dangerouslySetInnerHTML={{ __html: post.content }}
+                  ></p>
+                </div>
+              </div>
+
+              {/* Nút thích / trả lời giữ nguyên */}
+              <div className="@container pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
+                <div className="gap-2 flex flex-wrap justify-start">
+                  <button className="flex flex-col items-center justify-center gap-2 bg-transparent py-2.5 text-center w-20 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div className="rounded-full bg-[#f0f2f4] dark:bg-gray-700 p-2.5">
+                      <span className="material-symbols-outlined text-[#111418] dark:text-white">
+                        thumb_up
+                      </span>
+                    </div>
+                    <p className="text-[#111418] dark:text-white text-sm font-medium leading-normal">
+                      Thích
+                    </p>
+                  </button>
+                  <button className="flex flex-col items-center justify-center gap-2 bg-transparent py-2.5 text-center w-20 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div className="rounded-full bg-[#f0f2f4] dark:bg-gray-700 p-2.5">
+                      <span className="material-symbols-outlined text-[#111418] dark:text-white">
+                        reply
+                      </span>
+                    </div>
+                    <p className="text-[#111418] dark:text-white text-sm font-medium leading-normal">
+                      Trả lời
+                    </p>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-4">
+              <h2 className="text-[#111418] dark:text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pt-5">
+                {comments.length} Phản hồi
+              </h2>
+
+              {/* Hiển thị danh sách bình luận */}
+
+              {comments.map((comment) => (
+                <div
+                  key={comment.id}
+                  className="flex w-full flex-row items-start justify-start gap-3 p-4 bg-white dark:bg-background-dark rounded-xl shadow-sm"
+                >
+                  <div
+                    className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 shrink-0"
+                    style={{
+                      backgroundImage: `url(${
+                        comment.user?.avatarUrl || "/default-avatar.png"
+                      })`,
+                    }}
+                  ></div>
+
+                  <div className="flex h-full flex-1 flex-col items-start justify-start gap-2">
+                    <div className="flex w-full flex-row items-center justify-start gap-x-3">
+                      <p className="text-[#111418] dark:text-white text-sm font-bold leading-normal tracking-[0.015em]">
+                        {comment.user?.displayName || "Người dùng"}
+                      </p>
+                      <p className="text-[#617589] dark:text-gray-400 text-sm font-normal leading-normal">
+                        {timeAgo(comment.created_at)}
+                      </p>
+                    </div>
+                    <p className="text-[#343A40] dark:text-gray-300 text-base font-normal leading-relaxed">
+                      {comment.content}
+                    </p>
+                    <div className="flex w-full flex-row items-center justify-start gap-6 pt-2">
+                      <div className="flex items-center gap-2 cursor-pointer text-[#617589] dark:text-gray-400 hover:text-primary dark:hover:text-primary">
+                        <span className="material-symbols-outlined">
+                          thumb_up
+                        </span>
+                        <p className="text-sm font-medium leading-normal">0</p>
+                      </div>
+                      <div className="flex items-center gap-2 cursor-pointer text-[#617589] dark:text-gray-400 hover:text-red-500">
+                        <span className="material-symbols-outlined">
+                          thumb_down
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Ô nhập bình luận */}
+              <div className="flex flex-col gap-4 bg-white dark:bg-background-dark rounded-xl p-4 sm:p-6 shadow-sm mt-6">
+                <h3 className="text-[#111418] dark:text-white text-lg font-bold">
+                  Viết phản hồi của bạn
+                </h3>
+                <form
+                  onSubmit={handleSubmit}
+                  className="flex items-start gap-4"
+                >
+                  <div
+                    className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 shrink-0"
+                    style={{
+                      backgroundImage: `url("${
+                        user?.avatarUrl || "https://i.pravatar.cc/100?img=5"
+                      }")`,
+                    }}
+                  ></div>
+                  <div className="flex-1">
+                    <textarea
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      className="w-full min-h-[120px] rounded-lg border border-gray-300 dark:border-gray-600 bg-background-light dark:bg-gray-800 p-3 text-[#343A40] dark:text-gray-300 focus:ring-primary focus:border-primary transition"
+                      placeholder="Bạn nghĩ gì về chủ đề này?..."
+                    ></textarea>
+                    <div className="flex justify-end mt-4">
+                      <button type="submit">Gửi Phản hồi</button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+export default DetailPost;
