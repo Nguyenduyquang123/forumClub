@@ -12,6 +12,7 @@ import HomeClub from "../pages/HomeClub";
 import Login from "../pages/Login";
 import MemberClubs from "../pages/MemberClubs";
 import MyProfile from "../pages/MyProfile";
+import Notification from "../pages/Notification";
 import Register from "../pages/Register";
 import UserClubs from "../pages/UserClubs";
 
@@ -41,6 +42,7 @@ const publicRoutes = [
   { path: "/homeClub/:id/discuss-Club", component: DiscussClub, layout: "navbarClub" },
   { path: "/homeClub/:id/discuss-Club/create-topic", component: CreateTopic, layout: "navbarClub" },
    { path: "/homeClub/:id/discuss-Club/post/:postId", component: DetailPost, layout: "navbarClub" },
+   { path: "/notification", component: Notification},
 
 ];
 

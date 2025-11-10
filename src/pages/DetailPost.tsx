@@ -2,6 +2,9 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import timeAgo from "../components/timeAgo";
+import Pusher from "pusher-js";
+import TimeAgo from "timeago-react";
+import '../utils/viLocale';
 
 function DetailPost() {
   const { postId } = useParams<{ postId: string }>();
@@ -27,6 +30,7 @@ function DetailPost() {
     };
     fetchPost();
   }, [postId]);
+
   useEffect(() => {
     axios
       .get(`http://localhost:8000/api/posts/${postId}/comments`)
@@ -37,6 +41,19 @@ function DetailPost() {
       .catch(() => setLoading(false));
   }, [postId]);
 
+  useEffect(() => {
+    const pusher = new Pusher("5d1931596c569a22a972", { cluster: "ap1" });
+    const channel = pusher.subscribe(`comments-post-${postId}`);
+
+    channel.bind("new-comment", (data) => {
+      setComments((prev) => [data.comment, ...prev]);
+    });
+
+    return () => {
+      channel.unbind_all();
+      pusher.unsubscribe(`comments-post-${postId}`);
+    };
+  }, [postId]);
   // Gửi bình luận mới
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -53,7 +70,6 @@ function DetailPost() {
     };
     setComments([tempComment, ...comments]);
     setContent("");
-    console.log(tempComment)
 
     try {
       const res = await axios.post(
@@ -70,7 +86,7 @@ function DetailPost() {
       console.error(error);
     }
   };
-  console.log(comments);
+  console.log("reset trang")
 
   if (loading)
     return (
@@ -178,7 +194,7 @@ function DetailPost() {
                         {comment.user?.displayName || "Người dùng"}
                       </p>
                       <p className="text-[#617589] dark:text-gray-400 text-sm font-normal leading-normal">
-                        {timeAgo(comment.created_at)}
+                        <TimeAgo datetime={comment.created_at} locale="vi" />
                       </p>
                     </div>
                     <p className="text-[#343A40] dark:text-gray-300 text-base font-normal leading-relaxed">
