@@ -22,11 +22,14 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.548.0",
     "postcss": "^8.5.6",
+    "pusher-js": "^8.4.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.4",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss": "^4.1.16"
+    "tailwindcss": "^4.1.16",
+    "timeago-react": "^3.0.7",
+    "timeago.js": "^4.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
