@@ -1,7 +1,32 @@
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import ItemDiscuss from "../components/ItemDiscuss";
+import { Link, useParams } from "react-router-dom";
+import axios from "axios";
+import timeAgo from "../components/timeAgo";
 
-function DiscussClub() {
+function MyPostClub() {
+  const { id: clubId } = useParams(); // Lấy clubId từ URL
+  const user = JSON.parse(localStorage.getItem("user"));
+  const userId = user?.id;
+  const [posts, setPosts] = useState([]);
+  useEffect(() => {
+    const fetchMyPosts = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:8000/api/clubs/${clubId}/posts`
+        );
+        // Chỉ lấy bài viết của user hiện tại
+        const myPosts = res.data.posts.filter(
+          (post) => post.creator?.id === userId
+        );
+        setPosts(myPosts);
+      } catch (err) {
+        console.error("Lỗi khi lấy bài viết của tôi:", err);
+      }
+    };
+    fetchMyPosts();
+  }, [clubId, userId]);
+
   return (
     <div className=" flex flex-col  flex-1">
       <div className="flex flex-wrap gap-2 px-1 pb-4">
@@ -15,24 +40,15 @@ function DiscussClub() {
           /
         </span>
         <span className="text-[#111418] dark:text-gray-200 text-sm font-medium leading-normal">
-          Thảo Luận Chung
+          Bài viết của tôi
         </span>
       </div>
       <div className="flex flex-wrap justify-between items-center gap-4 pb-6">
         <div className="flex flex-col gap-2">
           <p className="text-[#111418] dark:text-white text-3xl font-black leading-tight tracking-[-0.033em]">
-            Thảo Luận Chung
-          </p>
-          <p className="text-gray-500 dark:text-gray-400 text-base font-normal leading-normal">
-            Nơi trao đổi mọi chủ đề về hoạt động của câu lạc bộ.
+            Bài viết của tôi
           </p>
         </div>
-        <Link to={"create-topic"}>
-          <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-5 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] gap-2 hover:bg-primary/90 transition-colors">
-            <span className="material-symbols-outlined !text-xl">add</span>
-            <span className="truncate">Tạo chủ đề mới</span>
-          </button>
-        </Link>
       </div>
       <div className="flex flex-col gap-4 mb-6">
         <div className="relative">
@@ -94,7 +110,54 @@ function DiscussClub() {
         </div>
       </div>
       <div className="flex flex-col gap-4">
-        <ItemDiscuss />
+        {posts.map((post) => (
+          <Link
+            to={`/homeClub/${clubId}/discuss-club/post/${post.id}`}
+            key={post.id}
+            className="group block"
+            href="#"
+          >
+            <div className="flex flex-col gap-4 rounded-xl border p-4 border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-800/50">
+              {/* Header */}
+              <h3 className="font-bold text-[#111418] dark:text-white">
+                {post.title}
+              </h3>
+
+              {/* Footer */}
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="size-6 rounded-full bg-cover bg-center bg-no-repeat"
+                    style={{
+                      backgroundImage: `url(${
+                        post.creator?.avatarUrl || "/default-avatar.png"
+                      })`,
+                    }}
+                  ></div>
+                  <span>{post.creator?.username || "Người dùng"}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined !text-base">
+                    chat_bubble_outline
+                  </span>
+                  <span>{post.comments.length || 0}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined !text-base">
+                    visibility
+                  </span>
+                  <span>{post.views || 0}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined !text-base">
+                    schedule
+                  </span>
+                  <span>{timeAgo(post.updated_at)}</span>
+                </div>
+              </div>
+            </div>
+          </Link>
+        ))}
       </div>
       <div className="mt-8 flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
         <button className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -124,4 +187,4 @@ function DiscussClub() {
     </div>
   );
 }
-export default DiscussClub;
+export default MyPostClub;

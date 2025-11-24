@@ -1,32 +1,59 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
+import TimeAgo from "timeago-react";
+import "../utils/viLocale";
 
 function MemberClubs() {
   const [members, setMembers] = useState([]);
-  const id = useParams();
+  const { id: clubId } = useParams();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [memberData, setMemberData] = useState(null);
   const [selectedRole, setSelectedRole] = useState("");
   const [updateFlag, setUpdateFlag] = useState(false);
-  const clubId = id.id;
+
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("");
+  const [invites, setInvites] = useState([]);
+  const [userRole, setUserRole] = useState("");
+  const user = JSON.parse(localStorage.getItem("user"));
+  const token = localStorage.getItem("token"); // ✅ Lấy token từ localStorage
+  const navigate = useNavigate();
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:8000/api/clubs/${clubId}/my-role`,
+          {
+            params: { user_id: user.id },
+          }
+        );
+        setUserRole(res.data);
+      } catch (err) {
+        console.error("Lỗi khi lấy role:", err);
+      }
+    };
+    fetchRole();
+    console.log(userRole);
+  }, [clubId]);
 
   useEffect(() => {
+    console.log("clubId:", clubId);
     const fetchMembers = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:8000/api/clubs/${clubId}/members`
+          `http://localhost:8000/api/clubs/${clubId}/member`
         );
         setMembers(res.data);
+        setUpdateFlag(false);
       } catch (err) {
         console.error("Lỗi khi tải danh sách thành viên:", err);
       }
     };
     fetchMembers();
   }, [clubId, updateFlag]);
+  console.log(members);
   const handleEditClick = (member) => {
     setSelectedMember(member); // Lưu thông tin member
     setIsOpen(true); // Mở modal
@@ -47,7 +74,7 @@ function MemberClubs() {
       };
       fetchMembersDetail();
     }
-  }, [selectedMember]);
+  }, [selectedMember, updateFlag]);
   const handleSaveRole = async () => {
     try {
       await axios.put(
@@ -65,7 +92,6 @@ function MemberClubs() {
       alert("Cập nhật thất bại");
     }
   };
-  const token = localStorage.getItem("token"); // ✅ Lấy token từ localStorage
 
   const handleSendInvite = async () => {
     if (!input.trim()) {
@@ -85,7 +111,7 @@ function MemberClubs() {
       });
 
       const inviteeId = userRes.data.id;
-
+      console.log(userRes.data);
       await axios.post(
         `http://localhost:8000/api/clubs/${clubId}/invite`,
         { invitee_id: inviteeId },
@@ -103,6 +129,76 @@ function MemberClubs() {
       }
     }
   };
+  const fetchInvites = async () => {
+    try {
+      const res = await axios.get(
+        `http://localhost:8000/api/clubs/${clubId}/invites`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setInvites(res.data);
+    } catch (err) {
+      console.error("Lỗi khi tải danh sách lời mời:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchInvites();
+  }, [clubId, status]);
+
+  const handleCancelInvite = async (inviteId) => {
+    try {
+      await axios.delete(
+        `http://localhost:8000/api/clubs/invites/${inviteId}/cancel`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setInvites((prev) => prev.filter((i) => i.id !== inviteId)); // Xóa khỏi danh sách realtime
+    } catch (error) {
+      console.error("Lỗi khi hủy lời mời:", error);
+    }
+  };
+  const handleDelete = async (memberId) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa thành viên này khỏi CLB?")) {
+      return;
+    }
+
+    try {
+      const res = await axios.delete(
+        `http://localhost:8000/api/clubs/${clubId}/members/${memberId}`,
+        {
+          data: { auth_user_id: user.id },
+        }
+      );
+
+      alert("Xóa thành viên thành công!");
+      setUpdateFlag(true);
+    } catch (err) {
+      console.error(err);
+      alert("Bạn không có quyền xóa thành viên này!");
+    }
+  };
+  const leaveClub = async (memberId) => {
+    if (!window.confirm("Bạn có chắc chắn muốn rời khỏi CLB?")) {
+      return;
+    }
+    if (!clubId || !memberId) throw new Error("Missing clubId or userId");
+
+    try {
+      const res = await axios.post(
+        `http://localhost:8000/api/clubs/${clubId}/leave`,
+        { user_id: memberId }
+      );
+      navigate("/userClubs");
+      setUpdateFlag(true);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -111,99 +207,124 @@ function MemberClubs() {
           <p className="text-[#111418] dark:text-white text-3xl font-black leading-tight tracking-[-0.033em]">
             Quản lý Thành viên
           </p>
-          <p className="text-[#617589] dark:text-gray-400 text-base font-normal leading-normal">
-            Quản lý tất cả thành viên của Câu lạc bộ Cờ Vua.
-          </p>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-        <div className="bg-white dark:bg-background-dark/80 p-6 rounded-xl border border-gray-200 dark:border-gray-800">
-          <h2 className="text-lg font-bold text-[#111418] dark:text-white mb-4">
-            Mời Thành viên Mới
-          </h2>
-          <div className="flex flex-col gap-4">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Nhập email hoặc tìm kiếm tên người dùng để gửi lời mời.
-            </p>
-            <div className="flex gap-2">
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-700 bg-transparent h-10 placeholder:text-[#617589] dark:placeholder:text-gray-500 px-3 text-sm font-normal leading-normal"
-                placeholder="Email hoặc tên người dùng..."
-              />
-              <button
-                onClick={handleSendInvite}
-                className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90"
-              >
-                <span className="material-symbols-outlined text-lg">send</span>
-                <span className="truncate">Gửi lời mời</span>
-              </button>
-            </div>
-            {status && (
-              <p className="text-sm mt-2 text-gray-600 dark:text-gray-300">
-                {status}
+      {userRole.role === "owner" || userRole.role === "admin" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          <div className="bg-white dark:bg-background-dark/80 p-6 rounded-xl border border-gray-200 dark:border-gray-800">
+            <h2 className="text-lg font-bold text-[#111418] dark:text-white mb-4">
+              Mời Thành viên Mới
+            </h2>
+            <div className="flex flex-col gap-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Nhập email hoặc tìm kiếm tên người dùng để gửi lời mời.
               </p>
-            )}
-          </div>
-        </div>
-        <div className="bg-white dark:bg-background-dark/80 p-6 rounded-xl border border-gray-200 dark:border-gray-800">
-          <h2 className="text-lg font-bold text-[#111418] dark:text-white mb-4">
-            Lời mời đang chờ xử lý
-          </h2>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-700 dark:text-gray-300">
-                eva.davis@email.com
-              </p>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Đã gửi: 2 ngày trước
-                </span>
+              <div className="flex gap-2">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-700 bg-transparent h-10 placeholder:text-[#617589] dark:placeholder:text-gray-500 px-3 text-sm font-normal leading-normal"
+                  placeholder="Email hoặc tên người dùng..."
+                />
                 <button
-                  aria-label="Hủy lời mời"
-                  className="p-1 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-400"
+                  onClick={handleSendInvite}
+                  className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90"
                 >
-                  <span className="material-symbols-outlined text-base">
-                    close
+                  <span className="material-symbols-outlined text-lg">
+                    send
                   </span>
+                  <span className="truncate">Gửi lời mời</span>
                 </button>
               </div>
+              {status && (
+                <p className="text-sm mt-2 text-gray-600 dark:text-gray-300">
+                  {status}
+                </p>
+              )}
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-700 dark:text-gray-300">
-                frank.g@email.com
-              </p>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Đã gửi: 1 tuần trước
-                </span>
-                <button
-                  aria-label="Hủy lời mời"
-                  className="p-1 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-400"
-                >
-                  <span className="material-symbols-outlined text-base">
-                    close
-                  </span>
-                </button>
-              </div>
+          </div>
+
+          <div className="bg-white dark:bg-background-dark/80 p-6 rounded-xl border border-gray-200 dark:border-gray-800">
+            <h2 className="text-lg font-bold text-[#111418] dark:text-white mb-4">
+              Lời mời tham gia
+            </h2>
+
+            <div className="flex flex-col gap-3 max-h-[110px] overflow-y-auto custom-scroll">
+              {invites.length === 0 ? (
+                <p className="text-gray-500 text-sm">
+                  Chưa có lời mời nào được gửi.
+                </p>
+              ) : (
+                invites.map((invite) => (
+                  <div
+                    key={invite.id}
+                    className="flex items-center justify-between border-b pb-2 border-gray-100 dark:border-gray-800"
+                  >
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      {invite.invitee?.email}
+                    </p>
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {invite.status === "pending" ? (
+                          <TimeAgo datetime={invite?.created_at} locale="vi" />
+                        ) : invite.status === "accepted" ? (
+                          "Đã chấp nhận"
+                        ) : invite.status === "rejected" ? (
+                          "Từ chối"
+                        ) : (
+                          "Đã hủy"
+                        )}
+                      </span>
+
+                      {invite.status === "pending" && (
+                        <button
+                          aria-label="Hủy lời mời"
+                          onClick={() => handleCancelInvite(invite.id)}
+                          className="p-1 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-400"
+                        >
+                          <span className="material-symbols-outlined text-base">
+                            close
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        ""
+      )}
       <div className="flex flex-col md:flex-row gap-4 mb-4">
         <div className="flex-grow">
           <label className="flex flex-col min-w-40 h-12 w-full">
-            <div className="flex w-full flex-1 items-stretch rounded-lg h-full">
-              <div className="text-[#617589] dark:text-gray-400 flex border-none bg-white dark:bg-background-dark/80 items-center justify-center pl-4 rounded-l-lg border-r-0">
+            <div
+              className="flex w-full flex-1 items-stretch rounded-lg h-full 
+                 border border-gray-300 dark:border-gray-700
+                 focus-within:ring-2 focus-within:ring-primary-500/50 focus-within:border-primary-500/50 
+                 transition-all duration-200"
+            >
+              <div
+                className="text-[#617589] dark:text-gray-400 flex border-none 
+                   bg-gray-50 dark:bg-gray-800 
+                   items-center justify-center pl-4 rounded-l-lg"
+              >
                 <span className="material-symbols-outlined text-2xl">
                   search
                 </span>
               </div>
               <input
-                className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-r-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border-none bg-white dark:bg-background-dark/80 h-full placeholder:text-[#617589] dark:placeholder:text-gray-500 px-4 text-base font-normal leading-normal"
+                type="text"
+                className="flex w-full min-w-0 flex-1 
+                   rounded-r-lg text-gray-900 dark:text-white 
+                   focus:outline-none focus:ring-0 
+                   bg-gray-50 dark:bg-gray-800 
+                   h-full placeholder:text-gray-500 dark:placeholder:text-gray-500 
+                   px-4 text-base font-normal leading-normal"
                 placeholder="Tìm kiếm thành viên theo tên hoặc email..."
-                value=""
               />
             </div>
           </label>
@@ -279,24 +400,41 @@ function MemberClubs() {
 
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-[#617589] dark:text-gray-400">
-                        <span className="material-symbols-outlined text-xl">
-                          logout
-                        </span>
-                      </button>
-                      <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-[#617589] dark:text-gray-400">
-                        <span
-                          className="material-symbols-outlined text-xl"
-                          onClick={() => handleEditClick(member.id)}
+                      {user.id == member.user?.id ? (
+                        <button
+                          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-[#617589] dark:text-gray-400"
+                          onClick={() => leaveClub(member.user.id)}
                         >
-                          edit
-                        </span>
-                      </button>
-                      <button className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400">
-                        <span className="material-symbols-outlined text-xl">
-                          delete
-                        </span>
-                      </button>
+                          <span className="material-symbols-outlined text-xl">
+                            logout
+                          </span>
+                        </button>
+                      ) : (
+                        " "
+                      )}
+                      {userRole.role === "owner" ||
+                      userRole.role === "admin" ? (
+                        <>
+                          <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-[#617589] dark:text-gray-400">
+                            <span
+                              className="material-symbols-outlined text-xl"
+                              onClick={() => handleEditClick(member.id)}
+                            >
+                              edit
+                            </span>
+                          </button>
+                          <button className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400">
+                            <span
+                              className="material-symbols-outlined text-xl"
+                              onClick={() => handleDelete(member.user.id)}
+                            >
+                              delete
+                            </span>
+                          </button>
+                        </>
+                      ) : (
+                        ""
+                      )}
                     </div>
                   </td>
                 </tr>

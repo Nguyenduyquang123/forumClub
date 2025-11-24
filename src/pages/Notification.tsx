@@ -1,9 +1,14 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
+import TimeAgo from "timeago-react";
+import "../utils/viLocale";
 
 function Notification() {
   const [invites, setInvites] = useState([]);
   const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user"));
+  const userId = user?.id;
+  const [notifications, setNotifications] = useState([]);
   useEffect(() => {
     fetchInvites();
   }, []);
@@ -49,7 +54,22 @@ function Notification() {
       console.error(err);
     }
   };
-  console.log(invites)
+
+  useEffect(() => {
+    axios
+      .get(`http://localhost:8000/api/users/${userId}/notifications`)
+      .then((res) => setNotifications(res.data))
+      .catch((err) => console.error(err));
+  }, [userId]);
+  const notificationsWithUsers = notifications.map((n) => {
+    if (n.type !== "like") return n;
+
+    const users = [n.from_user]; // ví dụ bạn có thêm người khác từ server
+    n.displayUsers = users;
+    return n;
+  });
+
+  console.log(notifications);
 
   return (
     <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 flex-grow">
@@ -124,7 +144,214 @@ function Notification() {
           </header>
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-              <li className="p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 group relative bg-primary/5 dark:bg-primary/10">
+              {notifications.length === 0 && invites.length === 0 ? (
+                <li className="p-6 text-center text-gray-600 dark:text-gray-400">
+                  Bạn không có thông báo nào.
+                </li>
+              ) : null}
+              {invites.map((invite) => (
+                <li className="p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 group relative bg-primary/5 dark:bg-primary/10">
+                  <div className="flex items-start gap-4">
+                    <div className="relative h-12 w-12 shrink-0">
+                      <img
+                        alt="Avatar Yêu Sách Hà Nội"
+                        className="h-12 w-12 rounded-full object-cover"
+                        src={`http://localhost:8000/${invite.club.avatar_url}`}
+                      />
+                      <div className="absolute -bottom-1 -right-1 flex items-center justify-center size-6 rounded-full bg-purple-500 text-white border-2 border-white dark:border-gray-800">
+                        <span className="material-symbols-outlined !text-[14px]">
+                          groups
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-800 dark:text-gray-200">
+                        Bạn có một lời mời tham gia câu lạc bộ{" "}
+                        <a
+                          className="font-bold hover:underline"
+                          href={`/clubs/${invite.club.id}`}
+                        >
+                          "{invite.club.name}"
+                        </a>
+                        .
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <TimeAgo datetime={invite.created_at} locale="vi" />
+                      </p>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={() => handleAccept(invite.id)}
+                          className="px-3 py-1.5 text-xs font-bold bg-primary text-white rounded-md hover:bg-primary/90"
+                        >
+                          Chấp nhận
+                        </button>
+                        <button
+                          onClick={() => handleReject(invite.id)}
+                          className="px-3 py-1.5 text-xs font-bold bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
+                        >
+                          Từ chối
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        className="flex size-8 items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400"
+                        title="Đánh dấu đã đọc"
+                      >
+                        <span className="material-symbols-outlined !text-[18px]">
+                          done
+                        </span>
+                      </button>
+                      <button
+                        className="flex size-8 items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400"
+                        title="Xóa"
+                      >
+                        <span className="material-symbols-outlined !text-[18px]">
+                          delete
+                        </span>
+                      </button>
+                    </div>
+                    <div className="w-2.5 h-2.5 bg-primary rounded-full absolute top-6 right-6"></div>
+                  </div>
+                </li>
+              ))}
+              {notifications.map((noti) => (
+                <li
+                  key={noti.id}
+                  className={`p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 group relative 
+                  ${
+                    noti.is_read === 0
+                      ? "bg-primary/5 dark:bg-primary/10"
+                      : "bg-white dark:bg-gray-800"
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Avatar — mỗi loại khác nhau */}
+                    {noti.type === "comment" && (
+                      <img
+                        className="h-12 w-12 rounded-full object-cover shrink-0"
+                        src={`${noti.from_user.avatarUrl}`}
+                        alt={noti.from_user.username}
+                      />
+                    )}
+
+                    {noti.type === "invite" && (
+                      <div className="relative h-12 w-12 shrink-0">
+                        <img
+                          className="h-12 w-12 rounded-full object-cover"
+                          src={`http://localhost:8000/${noti.club.avatar_url}`}
+                        />
+                        <div className="absolute -bottom-1 -right-1 flex items-center justify-center size-6 rounded-full bg-purple-500 text-white border-2">
+                          <span className="material-symbols-outlined !text-[14px]">
+                            groups
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {noti.type === "club_event" && (
+                      <div className="h-12 w-12 rounded-lg bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-red-500">
+                          event_available
+                        </span>
+                      </div>
+                    )}
+
+                    {noti.type === "like" && (
+                      <img
+                        className="h-12 w-12 rounded-full object-cover shrink-0"
+                        src={`${noti.from_user.avatarUrl}`}
+                      />
+                    )}
+
+                    {/* Nội dung notification */}
+                    <div className="flex-1">
+                      {noti.type === "comment" && (
+                        <p className="text-sm text-gray-800 dark:text-gray-200">
+                          <a className="font-bold hover:underline">
+                            {noti.from_user.username}
+                          </a>{" "}
+                          {noti.title}"
+                        </p>
+                      )}
+
+                      {noti.type === "invite" && (
+                        <p className="text-sm text-gray-800 dark:text-gray-200">
+                          Bạn có một lời mời tham gia câu lạc bộ{" "}
+                          <a
+                            className="font-bold hover:underline"
+                            href={`/clubs/${noti.club.id}`}
+                          >
+                            "{noti.club.name}"
+                          </a>
+                          .
+                        </p>
+                      )}
+
+                      {noti.type === "club_event" && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Sự kiện{" "}
+                          <a className="font-bold hover:underline text-gray-800 dark:text-gray-200">
+                            "{noti.title}"
+                          </a>{" "}
+                          sắp diễn ra.
+                        </p>
+                      )}
+
+                      {noti.type === "like" && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <a
+                            className="font-bold text-gray-800 dark:text-gray-200 hover:underline"
+                            href="#"
+                          >
+                            {noti.displayUsers[0].displayName}
+                          </a>
+                          {noti.displayUsers.length > 1 && (
+                            <>
+                              {" và "}
+                              <a
+                                className="font-bold text-gray-800 dark:text-gray-200 hover:underline"
+                                href="#"
+                              >
+                                {noti.displayUsers.length - 1} người khác
+                              </a>
+                            </>
+                          )}{" "}
+                          đã thích bài viết của bạn.
+                        </p>
+                      )}
+
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <TimeAgo datetime={noti.created_at} locale="vi" />
+                      </p>
+                    </div>
+
+                    {/* Nút hover */}
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button className="flex size-8 items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400">
+                        <span className="material-symbols-outlined !text-[18px]">
+                          done
+                        </span>
+                      </button>
+                      <button className="flex size-8 items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400">
+                        <span className="material-symbols-outlined !text-[18px]">
+                          delete
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* Dot unread */}
+                    {/* Chấm xanh nếu chưa đọc */}
+                    {noti.is_read === 0 && (
+                      <div className="w-2.5 h-2.5 bg-primary rounded-full absolute top-6 right-6"></div>
+                    )}
+                  </div>
+                </li>
+              ))}
+
+              {/* <li className="p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 group relative bg-primary/5 dark:bg-primary/10">
                 <div className="flex items-start gap-4">
                   <img
                     alt="Avatar Anh Tuấn"
@@ -169,83 +396,9 @@ function Notification() {
                   </div>
                   <div className="w-2.5 h-2.5 bg-primary rounded-full absolute top-6 right-6"></div>
                 </div>
-              </li>
-              <li className="p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 group relative bg-primary/5 dark:bg-primary/10">
-                {invites.map((invite) => (
-                  <div className="flex items-start gap-4">
-                    <div className="relative h-12 w-12 shrink-0">
-                      <img
-                        alt="Avatar Yêu Sách Hà Nội"
-                        className="h-12 w-12 rounded-full object-cover"
-                        src={`http://localhost:8000/${invite.club.avatar_url}`}
-                      />
-                      <div className="absolute -bottom-1 -right-1 flex items-center justify-center size-6 rounded-full bg-purple-500 text-white border-2 border-white dark:border-gray-800">
-                        <span className="material-symbols-outlined !text-[14px]">
-                          groups
-                        </span>
-                      </div>
-                    </div>
+              </li> */}
 
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-800 dark:text-gray-200">
-                        Bạn có một lời mời tham gia câu lạc bộ{" "}
-                        <a
-                          className="font-bold hover:underline"
-                          href={`/clubs/${invite.club.id}`}
-                        >
-                          "{invite.club.name}"
-                        </a>
-                        .
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {new Date(invite.created_at).toLocaleDateString(
-                          "vi-VN",
-                          {
-                            weekday: "long",
-                            day: "numeric",
-                            month: "numeric",
-                          }
-                        )}
-                      </p>
-                      <div className="mt-3 flex gap-2">
-                        <button
-                          onClick={() => handleAccept(invite.id)}
-                          className="px-3 py-1.5 text-xs font-bold bg-primary text-white rounded-md hover:bg-primary/90"
-                        >
-                          Chấp nhận
-                        </button>
-                        <button
-                          onClick={() => handleReject(invite.id)}
-                          className="px-3 py-1.5 text-xs font-bold bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
-                        >
-                          Từ chối
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        className="flex size-8 items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400"
-                        title="Đánh dấu đã đọc"
-                      >
-                        <span className="material-symbols-outlined !text-[18px]">
-                          done
-                        </span>
-                      </button>
-                      <button
-                        className="flex size-8 items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 dark:text-gray-400"
-                        title="Xóa"
-                      >
-                        <span className="material-symbols-outlined !text-[18px]">
-                          delete
-                        </span>
-                      </button>
-                    </div>
-                    <div className="w-2.5 h-2.5 bg-primary rounded-full absolute top-6 right-6"></div>
-                  </div>
-                ))}
-              </li>
-              <li className="p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 group relative">
+              {/* <li className="p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 group relative">
                 <div className="flex items-start gap-4">
                   <div className="relative h-12 w-12 shrink-0">
                     <div className="h-12 w-12 rounded-lg bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
@@ -336,7 +489,7 @@ function Notification() {
                     </button>
                   </div>
                 </div>
-              </li>
+              </li> */}
             </ul>
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <span className="text-sm text-gray-600 dark:text-gray-400">

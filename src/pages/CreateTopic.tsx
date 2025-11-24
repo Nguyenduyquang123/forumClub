@@ -1,6 +1,7 @@
 import axios from "axios";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import RichTextEditor from "../components/RichTextEditor";
 
 function CreateTopic() {
   const { id } = useParams();
@@ -8,17 +9,25 @@ function CreateTopic() {
   const [content, setContent] = useState("");
   const [isPinned, setIsPinned] = useState(false);
   const [notifyMembers, setNotifyMembers] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user")); // Lấy user từ localStorage (nếu bạn lưu khi login)
 
+  const userId = user?.id;
+  const clubId = id; // tạm thời fix hoặc lấy từ context/router nếu có
+  const handlePinnedChange = (checked: boolean) => {
+    setIsPinned(checked);
+    if (checked) setNotifyMembers(false); // bỏ chọn cái kia
+  };
+
+  const handleNotifyChange = (checked: boolean) => {
+    setNotifyMembers(checked);
+    if (checked) setIsPinned(false); // bỏ chọn cái kia
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      const token = localStorage.getItem("token");
-      const user = JSON.parse(localStorage.getItem("user")); // Lấy user từ localStorage (nếu bạn lưu khi login)
-
-      const userId = user?.id;
-      const clubId = id; // tạm thời fix hoặc lấy từ context/router nếu có
-
       if (!userId) {
         alert("Không tìm thấy người dùng!");
         return;
@@ -50,6 +59,23 @@ function CreateTopic() {
       alert("Không thể đăng bài. Kiểm tra console để biết thêm chi tiết.");
     }
   };
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:8000/api/clubs/${clubId}/my-role`,
+          {
+            params: { user_id: userId }, // FE gửi userId để backend trả role
+          }
+        );
+        setUserRole(res.data.role);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
+  }, [clubId]);
+  console.log("User role:", userRole);
   return (
     <div className="container mx-auto max-w-7xl">
       <div className="mb-6">
@@ -82,13 +108,13 @@ function CreateTopic() {
           Tạo Chủ Đề Mới
         </p>
       </div>
-       
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 xl:gap-12">
-  
         <form onSubmit={handleSubmit} className="lg:col-span-2">
           <div className="flex flex-col gap-8">
             <div className="flex flex-col w-full">
-              <label className="pb-2" //for="topic-title"
+              <label
+                className="pb-2" //for="topic-title"
               >
                 <span className="text-gray-900 dark:text-white text-base font-medium leading-normal">
                   Tiêu đề chủ đề
@@ -107,89 +133,38 @@ function CreateTopic() {
                 Tiêu đề không được để trống.
               </p>
             </div>
-            <div className="flex flex-col w-full">
-              <p className="text-gray-900 dark:text-white text-base font-medium leading-normal pb-2">
-                Nội dung bài viết
-              </p>
-              <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary dark:focus-within:border-primary transition-all">
-                <div className="flex items-center gap-1 p-2 border-b border-gray-300 dark:border-gray-700 bg-background-light dark:bg-gray-900/50">
-                  <button className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                    <span className="material-symbols-outlined text-xl">
-                      format_bold
+            <RichTextEditor content={content} setContent={setContent} />
+            {(userRole === "owner" || userRole === "admin") && (
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-8">
+                <h3 className="text-gray-900 dark:text-white text-lg font-bold mb-4">
+                  Tùy chọn cho Quản trị viên
+                </h3>
+                <div className="flex flex-col gap-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      className="form-checkbox h-5 w-5 rounded text-primary bg-gray-100 border-gray-300 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-offset-gray-800"
+                      type="checkbox"
+                      checked={isPinned}
+                      onChange={(e) => handlePinnedChange(e.target.checked)}
+                    />
+                    <span className="text-gray-700 dark:text-gray-300">
+                      Ghim chủ đề này lên đầu thảo luận
                     </span>
-                  </button>
-                  <button className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                    <span className="material-symbols-outlined text-xl">
-                      format_italic
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      className="form-checkbox h-5 w-5 rounded text-primary bg-gray-100 border-gray-300 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-offset-gray-800"
+                      type="checkbox"
+                      checked={notifyMembers}
+                      onChange={(e) => handleNotifyChange(e.target.checked)}
+                    />
+                    <span className="text-gray-700 dark:text-gray-300">
+                      Gửi thông báo cho tất cả thành viên về chủ đề này
                     </span>
-                  </button>
-                  <button className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                    <span className="material-symbols-outlined text-xl">
-                      format_underlined
-                    </span>
-                  </button>
-                  <div className="w-px h-6 bg-gray-300 dark:border-gray-700 mx-1"></div>
-                  <button className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                    <span className="material-symbols-outlined text-xl">
-                      format_list_bulleted
-                    </span>
-                  </button>
-                  <button className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                    <span className="material-symbols-outlined text-xl">
-                      format_list_numbered
-                    </span>
-                  </button>
-                  <div className="w-px h-6 bg-gray-300 dark:border-gray-700 mx-1"></div>
-                  <button className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                    <span className="material-symbols-outlined text-xl">
-                      link
-                    </span>
-                  </button>
-                  <button className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                    <span className="material-symbols-outlined text-xl">
-                      image
-                    </span>
-                  </button>
+                  </label>
                 </div>
-                <textarea
-                  className="form-input flex w-full min-w-0 flex-1 resize-y overflow-hidden text-gray-900 dark:text-white focus:outline-0 focus:ring-0 border-0 bg-white dark:bg-gray-800 min-h-60 placeholder:text-gray-500 dark:placeholder:text-gray-400 p-[15px] text-base font-normal leading-normal"
-                  placeholder="Viết nội dung của bạn ở đây..."
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  required
-                ></textarea>
               </div>
-            </div>
-
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-8">
-              <h3 className="text-gray-900 dark:text-white text-lg font-bold mb-4">
-                Tùy chọn cho Quản trị viên
-              </h3>
-              <div className="flex flex-col gap-4">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    className="form-checkbox h-5 w-5 rounded text-primary bg-gray-100 border-gray-300 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-offset-gray-800"
-                    type="checkbox"
-                    checked={isPinned}
-                    onChange={(e) => setIsPinned(e.target.checked)}
-                  />
-                  <span className="text-gray-700 dark:text-gray-300">
-                    Ghim chủ đề này lên đầu thảo luận
-                  </span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    className="form-checkbox h-5 w-5 rounded text-primary bg-gray-100 border-gray-300 focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-offset-gray-800"
-                    type="checkbox"
-                    checked={notifyMembers}
-                    onChange={(e) => setNotifyMembers(e.target.checked)}
-                  />
-                  <span className="text-gray-700 dark:text-gray-300">
-                    Gửi thông báo cho tất cả thành viên về chủ đề này
-                  </span>
-                </label>
-              </div>
-            </div>
+            )}
             <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 type="submit"

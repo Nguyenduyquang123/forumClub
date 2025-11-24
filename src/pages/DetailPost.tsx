@@ -1,10 +1,10 @@
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import timeAgo from "../components/timeAgo";
 import Pusher from "pusher-js";
 import TimeAgo from "timeago-react";
-import '../utils/viLocale';
+import "../utils/viLocale";
 
 function DetailPost() {
   const { postId } = useParams<{ postId: string }>();
@@ -13,8 +13,23 @@ function DetailPost() {
 
   const [comments, setComments] = useState([]);
   const [content, setContent] = useState("");
+  const [liked, setLiked] = useState(false);
+  const [likedComment, setLikedComment] = useState(false);
+  const [likedCountComment, setLikeCountComment] = useState(null);
+  const [likeCount, setLikeCount] = useState(0);
   const user = JSON.parse(localStorage.getItem("user"));
+  const commentsEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    containerRef.current?.scrollTo({
+      top: containerRef.current.scrollHeight,
+      behavior: "auto", // hoặc "smooth"
+    });
+  }, [comments]);
+  const scrollToBottom = () => {
+    commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
   useEffect(() => {
     const fetchPost = async () => {
       try {
@@ -35,18 +50,19 @@ function DetailPost() {
     axios
       .get(`http://localhost:8000/api/posts/${postId}/comments`)
       .then((res) => {
-        setComments(res.data);
+        setComments(res.data.reverse());
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [postId]);
+  }, [postId, likedComment]);
 
   useEffect(() => {
     const pusher = new Pusher("5d1931596c569a22a972", { cluster: "ap1" });
     const channel = pusher.subscribe(`comments-post-${postId}`);
 
     channel.bind("new-comment", (data) => {
-      setComments((prev) => [data.comment, ...prev]);
+      setComments((prev) => [...prev, data.comment]);
+      scrollToBottom();
     });
 
     return () => {
@@ -54,7 +70,7 @@ function DetailPost() {
       pusher.unsubscribe(`comments-post-${postId}`);
     };
   }, [postId]);
-  // Gửi bình luận mới
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!content.trim()) return;
@@ -68,7 +84,7 @@ function DetailPost() {
         avatarUrl: user?.avatarUrl,
       },
     };
-    setComments([tempComment, ...comments]);
+    setComments([...comments, tempComment]);
     setContent("");
 
     try {
@@ -80,13 +96,69 @@ function DetailPost() {
         }
       );
       // Cập nhật comment thật
-      setComments([res.data, ...comments]);
+      setComments([...comments, res.data]);
       setContent("");
     } catch (error) {
       console.error(error);
     }
   };
-  console.log("reset trang")
+
+  useEffect(() => {
+    const fetchLikeData = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:8000/api/posts/${postId}/likes`
+        );
+        setLikeCount(res.data.like_count);
+
+        const checkRes = await axios.post(
+          `http://localhost:8000/api/posts/check-like`,
+          {
+            post_id: postId,
+            user_id: user.id,
+          }
+        );
+        setLiked(checkRes.data.liked);
+      } catch (err) {
+        console.error("Lỗi khi tải dữ liệu like:", err);
+      }
+    };
+    fetchLikeData();
+  }, [postId, user.id]);
+
+  const handleToggleLike = async () => {
+    try {
+      const res = await axios.post(
+        `http://localhost:8000/api/posts/toggle-like`,
+        {
+          post_id: postId,
+          user_id: user.id,
+        }
+      );
+
+      setLiked(res.data.liked);
+      setLikeCount(res.data.like_count);
+    } catch (err) {
+      console.error("Lỗi khi like bài viết:", err);
+    }
+  };
+
+  const handleToggleLikeComment = async (commentId) => {
+    try {
+      const res = await axios.post(
+        "http://localhost:8000/api/comments/toggle-like",
+        {
+          comment_id: commentId,
+          user_id: user.id,
+        }
+      );
+
+      setLikeCountComment(res.data.like_count);
+      setLikedComment(!likedComment);
+    } catch (err) {
+      console.error("Lỗi khi like/unlike:", err);
+    }
+  };
 
   if (loading)
     return (
@@ -134,24 +206,51 @@ function DetailPost() {
                     </p>
                   </div>
 
-                  <p
-                    className="text-[#343A40] dark:text-gray-300 text-base font-normal leading-relaxed space-y-4"
+                  <div
+                    className="
+    text-[#343A40] dark:text-gray-300 text-base font-normal leading-relaxed
+    [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6
+    [&_li]:mb-1 [&_p]:mb-4
+  "
                     dangerouslySetInnerHTML={{ __html: post.content }}
-                  ></p>
+                  ></div>
                 </div>
               </div>
 
               {/* Nút thích / trả lời giữ nguyên */}
               <div className="@container pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
                 <div className="gap-2 flex flex-wrap justify-start">
-                  <button className="flex flex-col items-center justify-center gap-2 bg-transparent py-2.5 text-center w-20 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                    <div className="rounded-full bg-[#f0f2f4] dark:bg-gray-700 p-2.5">
-                      <span className="material-symbols-outlined text-[#111418] dark:text-white">
+                  <button
+                    onClick={handleToggleLike}
+                    className={`flex flex-col items-center justify-center gap-2 bg-transparent py-2.5 text-center w-20 rounded-lg 
+        hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors`}
+                  >
+                    <div
+                      className={`rounded-full p-2.5 ${
+                        liked
+                          ? "bg-blue-200 dark:bg-blue-600"
+                          : "bg-[#f0f2f4] dark:bg-gray-700"
+                      }`}
+                    >
+                      <span
+                        className={`material-symbols-outlined text-lg ${
+                          liked
+                            ? "text-blue-600 dark:text-white"
+                            : "text-[#111418] dark:text-white"
+                        }`}
+                      >
                         thumb_up
                       </span>
                     </div>
-                    <p className="text-[#111418] dark:text-white text-sm font-medium leading-normal">
-                      Thích
+                    <p
+                      className={`text-sm font-medium leading-normal ${
+                        liked
+                          ? "text-blue-600"
+                          : "text-[#111418] dark:text-white"
+                      }`}
+                    ></p>
+                    <p className="text-xs text-gray-500">
+                      {likeCount} lượt thích
                     </p>
                   </button>
                   <button className="flex flex-col items-center justify-center gap-2 bg-transparent py-2.5 text-center w-20 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
@@ -173,50 +272,65 @@ function DetailPost() {
               </h2>
 
               {/* Hiển thị danh sách bình luận */}
-
-              {comments.map((comment) => (
-                <div
-                  key={comment.id}
-                  className="flex w-full flex-row items-start justify-start gap-3 p-4 bg-white dark:bg-background-dark rounded-xl shadow-sm"
-                >
+              <div
+                ref={containerRef}
+                className="max-h-[500px] overflow-y-auto "
+              >
+                {comments.map((comment) => (
                   <div
-                    className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 shrink-0"
-                    style={{
-                      backgroundImage: `url(${
-                        comment.user?.avatarUrl || "/default-avatar.png"
-                      })`,
-                    }}
-                  ></div>
+                    key={comment.id}
+                    className="flex w-full flex-row items-start justify-start gap-3 p-4 bg-white dark:bg-background-dark rounded-xl shadow-sm "
+                  >
+                    <div
+                      className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 shrink-0"
+                      style={{
+                        backgroundImage: `url(${
+                          comment.user?.avatarUrl || "/default-avatar.png"
+                        })`,
+                      }}
+                    ></div>
 
-                  <div className="flex h-full flex-1 flex-col items-start justify-start gap-2">
-                    <div className="flex w-full flex-row items-center justify-start gap-x-3">
-                      <p className="text-[#111418] dark:text-white text-sm font-bold leading-normal tracking-[0.015em]">
-                        {comment.user?.displayName || "Người dùng"}
-                      </p>
-                      <p className="text-[#617589] dark:text-gray-400 text-sm font-normal leading-normal">
-                        <TimeAgo datetime={comment.created_at} locale="vi" />
-                      </p>
-                    </div>
-                    <p className="text-[#343A40] dark:text-gray-300 text-base font-normal leading-relaxed">
-                      {comment.content}
-                    </p>
-                    <div className="flex w-full flex-row items-center justify-start gap-6 pt-2">
-                      <div className="flex items-center gap-2 cursor-pointer text-[#617589] dark:text-gray-400 hover:text-primary dark:hover:text-primary">
-                        <span className="material-symbols-outlined">
-                          thumb_up
-                        </span>
-                        <p className="text-sm font-medium leading-normal">0</p>
+                    <div className="flex h-full flex-1 flex-col items-start justify-start gap-2">
+                      <div className="flex w-full flex-row items-center justify-start gap-x-3">
+                        <p className="text-[#111418] dark:text-white text-sm font-bold leading-normal tracking-[0.015em]">
+                          {comment.user?.displayName || "Người dùng"}
+                        </p>
+                        <p className="text-[#617589] dark:text-gray-400 text-sm font-normal leading-normal">
+                          <TimeAgo datetime={comment.created_at} locale="vi" />
+                        </p>
                       </div>
-                      <div className="flex items-center gap-2 cursor-pointer text-[#617589] dark:text-gray-400 hover:text-red-500">
-                        <span className="material-symbols-outlined">
-                          thumb_down
-                        </span>
+                      <p className="text-[#343A40] dark:text-gray-300 text-base font-normal leading-relaxed">
+                        {comment.content}
+                      </p>
+                      <div className="flex w-full flex-row items-center justify-start gap-6 pt-2">
+                        <div
+                          onClick={() => handleToggleLikeComment(comment.id)}
+                          className={`flex items-center gap-2 cursor-pointer ${
+                            (comment.likes || []).some(
+                              (like) => like.user_id === user.id
+                            )
+                              ? "text-blue-600"
+                              : "text-[#617589] dark:text-gray-400"
+                          } hover:text-primary dark:hover:text-primary`}
+                        >
+                          <span className="material-symbols-outlined">
+                            thumb_up
+                          </span>
+                          <p className="text-sm font-medium leading-normal">
+                            {comment.likes?.length || 0}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 cursor-pointer text-[#617589] dark:text-gray-400 hover:text-red-500">
+                          <span className="material-symbols-outlined">
+                            thumb_down
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-
+                ))}
+                <div ref={commentsEndRef} />
+              </div>
               {/* Ô nhập bình luận */}
               <div className="flex flex-col gap-4 bg-white dark:bg-background-dark rounded-xl p-4 sm:p-6 shadow-sm mt-6">
                 <h3 className="text-[#111418] dark:text-white text-lg font-bold">
