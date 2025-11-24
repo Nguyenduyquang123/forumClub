@@ -15,7 +15,9 @@ import MyProfile from "../pages/MyProfile";
 import Notification from "../pages/Notification";
 import Register from "../pages/Register";
 import UserClubs from "../pages/UserClubs";
-
+import ClubNotification from "../pages/ClubNotification";
+import MyPostClub from "../pages/MyPostClub";
+import ClubsSetting from "../pages/ClubsSetting";
 const publicRoutes = [
   { path: "/", component: Home },
   { path: "/createClub", component: CreateClub },
@@ -35,15 +37,57 @@ const publicRoutes = [
   },
   { path: "/my-profile", component: MyProfile },
   { path: "/my-profile/edit-profile", component: EditProfile },
-  { path: "/homeClub/:id/memberclub", component: MemberClubs, layout: "navbarClub" },
-  { path: "/homeClub/:id/even-club", component: EvenClub, layout: "navbarClub" },
-   { path: "/homeClub/:id/even-club/create-event", component: CreateEven, layout: "navbarClub" },
-   { path: "/homeClub/:id/even-club/detail-event/:eventId", component: DetailEven, layout: "navbarClub" },
-  { path: "/homeClub/:id/discuss-Club", component: DiscussClub, layout: "navbarClub" },
-  { path: "/homeClub/:id/discuss-Club/create-topic", component: CreateTopic, layout: "navbarClub" },
-   { path: "/homeClub/:id/discuss-Club/post/:postId", component: DetailPost, layout: "navbarClub" },
-   { path: "/notification", component: Notification},
-
+  {
+    path: "/homeClub/:id/memberclub",
+    component: MemberClubs,
+    layout: "navbarClub",
+  },
+  {
+    path: "/homeClub/:id/even-club",
+    component: EvenClub,
+    layout: "navbarClub",
+  },
+  {
+    path: "/homeClub/:id/even-club/create-event",
+    component: CreateEven,
+    layout: "navbarClub",
+  },
+  {
+    path: "/homeClub/:id/even-club/detail-event/:eventId",
+    component: DetailEven,
+    layout: "navbarClub",
+  },
+  {
+    path: "/homeClub/:id/discuss-Club",
+    component: DiscussClub,
+    layout: "navbarClub",
+  },
+  {
+    path: "/homeClub/:id/discuss-Club/create-topic",
+    component: CreateTopic,
+    layout: "navbarClub",
+  },
+  {
+    path: "/homeClub/:id/discuss-Club/post/:postId",
+    component: DetailPost,
+    layout: "navbarClub",
+  },
+  { path: "/notification", component: Notification },
+  {
+    path: "/homeClub/:id/notification",
+    component: ClubNotification,
+    layout: "navbarClub",
+  },
+    {
+    path: "/homeClub/:id/my-post-club",
+    component: MyPostClub,
+    layout: "navbarClub",
+  },
+  {
+    path: "/homeClub/:id/club-settings",
+    component: ClubsSetting,
+    layout: "navbarClub",
+  },
 ];
 
 const privateRoutes = [];
