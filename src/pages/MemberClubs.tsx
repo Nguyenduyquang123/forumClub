@@ -4,6 +4,12 @@ import { Navigate, useNavigate, useParams } from "react-router-dom";
 import TimeAgo from "timeago-react";
 import "../utils/viLocale";
 
+const ROLE_LABEL = {
+  owner: "Chủ tịch",
+  admin: "Quản lý",
+  member: "Thành viên",
+};
+
 function MemberClubs() {
   const [members, setMembers] = useState([]);
   const { id: clubId } = useParams();
@@ -12,13 +18,15 @@ function MemberClubs() {
   const [memberData, setMemberData] = useState(null);
   const [selectedRole, setSelectedRole] = useState("");
   const [updateFlag, setUpdateFlag] = useState(false);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
 
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("");
   const [invites, setInvites] = useState([]);
   const [userRole, setUserRole] = useState("");
   const user = JSON.parse(localStorage.getItem("user"));
-  const token = localStorage.getItem("token"); // ✅ Lấy token từ localStorage
+  const token = localStorage.getItem("token");
   const navigate = useNavigate();
   useEffect(() => {
     const fetchRole = async () => {
@@ -55,8 +63,8 @@ function MemberClubs() {
   }, [clubId, updateFlag]);
   console.log(members);
   const handleEditClick = (member) => {
-    setSelectedMember(member); // Lưu thông tin member
-    setIsOpen(true); // Mở modal
+    setSelectedMember(member);
+    setIsOpen(true);
   };
   useEffect(() => {
     if (selectedMember) {
@@ -65,7 +73,7 @@ function MemberClubs() {
           const res = await axios.get(
             `http://localhost:8000/api/members/${selectedMember}`
           );
-          setMemberData(res.data.data); // dùng res.data chứ không phải res.data.data
+          setMemberData(res.data.data);
           setSelectedRole(res.data.data.role);
         } catch (err) {
           console.error("Lỗi khi tải chi tiết thành viên:", err);
@@ -86,7 +94,6 @@ function MemberClubs() {
       alert("Cập nhật chức vụ thành công");
       setIsOpen(false);
       setUpdateFlag(true);
-      // reload danh sách nếu muốn
     } catch (err) {
       console.error("Lỗi khi cập nhật role:", err);
       alert("Cập nhật thất bại");
@@ -123,7 +130,7 @@ function MemberClubs() {
     } catch (error) {
       console.error("Chi tiết lỗi:", error.response?.data || error.message);
       if (error.response?.data?.message) {
-        setStatus("⚠️ " + error.response.data.message);
+        setStatus("⚠️ Người này tồn tại");
       } else {
         setStatus("⚠️ Gửi lời mời thất bại!");
       }
@@ -157,7 +164,7 @@ function MemberClubs() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      setInvites((prev) => prev.filter((i) => i.id !== inviteId)); // Xóa khỏi danh sách realtime
+      setInvites((prev) => prev.filter((i) => i.id !== inviteId));
     } catch (error) {
       console.error("Lỗi khi hủy lời mời:", error);
     }
@@ -199,7 +206,17 @@ function MemberClubs() {
       console.error(err);
     }
   };
+  const filteredMembers = members.filter((member) => {
+    const keyword = search.toLowerCase();
 
+    const matchSearch =
+      member.user?.displayName?.toLowerCase().includes(keyword) ||
+      member.user?.email?.toLowerCase().includes(keyword);
+
+    const matchRole = roleFilter === "all" ? true : member.role === roleFilter;
+
+    return matchSearch && matchRole;
+  });
   return (
     <div className="max-w-7xl mx-auto">
       <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
@@ -318,12 +335,14 @@ function MemberClubs() {
               </div>
               <input
                 type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 className="flex w-full min-w-0 flex-1 
-                   rounded-r-lg text-gray-900 dark:text-white 
-                   focus:outline-none focus:ring-0 
-                   bg-gray-50 dark:bg-gray-800 
-                   h-full placeholder:text-gray-500 dark:placeholder:text-gray-500 
-                   px-4 text-base font-normal leading-normal"
+     rounded-r-lg text-gray-900 dark:text-white 
+     focus:outline-none focus:ring-0 
+     bg-gray-50 dark:bg-gray-800 
+     h-full placeholder:text-gray-500 
+     px-4 text-base font-normal leading-normal"
                 placeholder="Tìm kiếm thành viên theo tên hoặc email..."
               />
             </div>
@@ -331,24 +350,18 @@ function MemberClubs() {
         </div>
         <div className="flex gap-3 items-center">
           <button className="flex h-12 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-white dark:bg-background-dark/80 px-4 text-[#111418] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800">
-            <span className="material-symbols-outlined text-xl">
-              admin_panel_settings
-            </span>
-            <p className="text-sm font-medium leading-normal">
-              Chức vụ: Tất cả
-            </p>
-            <span className="material-symbols-outlined text-xl">
-              expand_more
-            </span>
-          </button>
-          <button className="flex h-12 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-white dark:bg-background-dark/80 px-4 text-[#111418] dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800">
-            <span className="material-symbols-outlined text-xl">circle</span>
-            <p className="text-sm font-medium leading-normal">
-              Trạng thái: Đang hoạt động
-            </p>
-            <span className="material-symbols-outlined text-xl">
-              expand_more
-            </span>
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="h-12 rounded-lg bg-white dark:bg-background-dark/80 
+             px-4 text-sm text-[#111418] dark:text-white 
+             border border-gray-300 dark:border-gray-700"
+            >
+              <option value="all">Tất cả chức vụ</option>
+              <option value="owner">Chủ tịch</option>
+              <option value="admin">Quản lý</option>
+              <option value="member">Thành viên</option>
+            </select>
           </button>
         </div>
       </div>
@@ -370,7 +383,7 @@ function MemberClubs() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-              {members.map((member) => (
+              {filteredMembers.map((member) => (
                 <tr key={member.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-4">
@@ -394,7 +407,7 @@ function MemberClubs() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
-                      {member?.role}
+                      {ROLE_LABEL[member?.role] || "Thành viên"}
                     </span>
                   </td>
 

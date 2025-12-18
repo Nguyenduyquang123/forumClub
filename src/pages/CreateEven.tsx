@@ -118,7 +118,7 @@ function CreateEvent() {
               </p>
             </div>
 
-            {/* ✅ label để click chọn file */}
+            
             <label
               htmlFor="banner"
               className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#f0f2f4] dark:bg-gray-700 text-[#111418] dark:text-white text-sm font-bold leading-normal tracking-[0.015em]"
@@ -126,7 +126,7 @@ function CreateEvent() {
               Chọn ảnh
             </label>
 
-            {/* ✅ input ẩn */}
+            
             <input
               id="banner"
               type="file"
@@ -135,7 +135,7 @@ function CreateEvent() {
               className="hidden"
             />
 
-            {/* Hiển thị tên file khi chọn */}
+            
             {file && (
               <p className="text-sm text-gray-500 mt-2">
                 Đã chọn: <span className="font-semibold">{file.name}</span>
@@ -211,7 +211,7 @@ function CreateEvent() {
       </section>
 
       <section>
-        {/* Số lượng người tham gia */}
+        
         <div className="flex max-w-xs flex-wrap items-end gap-4 px-4 py-3">
           <label className="flex flex-col min-w-40 flex-1">
             <p className="text-[#111418] dark:text-gray-300 text-base font-medium leading-normal pb-2">

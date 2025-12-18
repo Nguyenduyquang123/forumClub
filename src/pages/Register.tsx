@@ -2,213 +2,186 @@ import axios from "axios";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-function Register() {
+export default function Register() {
+  const navigate = useNavigate();
+
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const navigate = useNavigate();
+  const [error, setError] = useState("");
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+
+    if (password !== confirmPassword) {
+      setError("Mật khẩu xác nhận không khớp");
+      return;
+    }
 
     try {
-      const res = await axios.post("http://localhost:8000/api/auth/register", {
+      await axios.post("http://localhost:8000/api/auth/register", {
         username,
         email,
-        displayName,
         password,
         password_confirmation: confirmPassword,
       });
+
       navigate("/login");
-    } catch (error) {
-      console.error("Error registering:", error);
+    } catch (err: any) {
+      setError(
+        err.response?.data?.message || "Đăng ký thất bại, vui lòng thử lại"
+      );
     }
   };
-  console.log("Register Page Rendered");
-  return (
-    <div className="relative flex h-auto min-h-screen w-full flex-col bg-background-light dark:bg-background-dark group/design-root overflow-x-hidden">
-      <div className="layout-container flex h-full grow flex-col">
-        <div className="flex flex-1 justify-center py-5">
-          <div className="flex w-full max-w-6xl flex-col items-center justify-center lg:flex-row">
-            <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-8">
-              <div
-                className="w-full max-w-md aspect-square bg-center bg-no-repeat bg-cover"
-                data-alt="Abstract gradient of blue and purple shapes representing community and connection."
-              ></div>
-            </div>
-            <div className="w-full max-w-md lg:w-1/2 p-4 sm:p-6 md:p-8">
-              <div className="layout-content-container flex flex-col w-full">
-                <div className="flex items-center gap-3 px-4 pb-4">
-                  <span className="material-symbols-outlined text-primary text-4xl">
-                    forum
-                  </span>
-                  <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-                    ForumClub
-                  </h2>
-                </div>
-                <div className="px-4 py-3">
-                  <div className="flex h-10 flex-1 items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-800 p-1">
-                    <Link
-                      className="tab-link flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 text-sm font-medium leading-normal transition-colors text-[#617589] dark:text-slate-400"
-                      to="/login"
-                    >
-                      <span>Đăng nhập</span>
-                    </Link>
-                    <a
-                      className="tab-link flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 text-sm font-medium leading-normal transition-colors text-[#617589] dark:text-slate-400"
-                      href="#register-form-container"
-                    >
-                      <span>Đăng ký</span>
-                    </a>
-                  </div>
-                </div>
 
-                <div className="form-container" id="register-form-container">
-                  <h1 className="text-[#111418] dark:text-white tracking-light text-[32px] font-bold leading-tight px-4 text-left pb-1 pt-6">
-                    Tạo tài khoản mới
-                  </h1>
-                  <p className="text-slate-600 dark:text-slate-400 text-base font-normal leading-normal pb-3 pt-1 px-4">
-                    Tham gia cộng đồng và kết nối với những người bạn.
-                  </p>
-                  <form onSubmit={handleSubmit}>
-                    <div className="flex w-full flex-col px-4 py-3">
-                      <label className="flex flex-col w-full">
-                        <p className="text-[#111418] dark:text-white text-base font-medium leading-normal pb-2">
-                          Tên người dùng
-                        </p>
-                        <input
-                          className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbe0e6] dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-primary h-14 placeholder:text-[#617589] p-[15px] text-base font-normal leading-normal"
-                          placeholder="Chọn một tên người dùng"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value)}
-                        />
-                      </label>
-                    </div>
-                    <div className="flex w-full flex-col px-4 py-3">
-                      <label className="flex flex-col w-full">
-                        <p className="text-[#111418] dark:text-white text-base font-medium leading-normal pb-2">
-                          Email
-                        </p>
-                        <input
-                          className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbe0e6] dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-primary h-14 placeholder:text-[#617589] p-[15px] text-base font-normal leading-normal"
-                          placeholder="Nhập địa chỉ email của bạn"
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                        />
-                      </label>
-                    </div>
-                    <div className="flex w-full flex-col px-4 py-3">
-                      <label className="flex flex-col w-full">
-                        <p className="text-[#111418] dark:text-white text-base font-medium leading-normal pb-2">
-                          Tên hiển thị (Nickname)
-                        </p>
-                        <input
-                          className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbe0e6] dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-primary h-14 placeholder:text-[#617589] p-[15px] text-base font-normal leading-normal"
-                          placeholder="Tên bạn muốn mọi người thấy"
-                          value={displayName}
-                          onChange={(e) => setDisplayName(e.target.value)}
-                        />
-                      </label>
-                    </div>
-                    <div className="flex w-full flex-col px-4 py-3">
-                      <label className="flex flex-col w-full">
-                        <p className="text-[#111418] dark:text-white text-base font-medium leading-normal pb-2">
-                          Mật khẩu
-                        </p>
-                        <input
-                          className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbe0e6] dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-primary h-14 placeholder:text-[#617589] p-[15px] text-base font-normal leading-normal"
-                          placeholder="Tạo một mật khẩu mạnh"
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                        />
-                      </label>
-                    </div>
-                    <div className="flex w-full flex-col px-4 py-3">
-                      <label className="flex flex-col w-full">
-                        <p className="text-[#111418] dark:text-white text-base font-medium leading-normal pb-2">
-                          Nhập lại mật khẩu
-                        </p>
-                        <input
-                          className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111418] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbe0e6] dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-primary h-14 placeholder:text-[#617589] p-[15px] text-base font-normal leading-normal"
-                          placeholder="Xác nhận mật khẩu của bạn"
-                          type="password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                        />
-                      </label>
-                    </div>
-                    <div className="flex px-4 py-3">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          className="form-checkbox rounded border-slate-300 dark:border-slate-600 text-primary focus:ring-primary/50 bg-white dark:bg-slate-800"
-                          type="checkbox"
-                        />
-                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                          Tôi đồng ý với{" "}
-                          <a
-                            className="font-medium text-primary hover:underline"
-                            href="#"
-                          >
-                            Điều khoản Dịch vụ
-                          </a>
-                          .
-                        </span>
-                      </label>
-                    </div>
-                    <div className="px-4 py-3 mt-4">
-                      <button
-                        type="submit"
-                        className="flex h-14 w-full items-center justify-center rounded-lg bg-primary text-white text-base font-bold leading-normal shadow-md hover:bg-primary/90 transition-colors"
-                      >
-                        Đăng ký
-                      </button>
-                    </div>
-                  </form>
-                </div>
-                <div className="flex items-center gap-4 px-4 py-3">
-                  <hr className="flex-grow border-t border-slate-200 dark:border-slate-700" />
-                  <span className="text-sm text-slate-500 dark:text-slate-400">
-                    Hoặc
-                  </span>
-                  <hr className="flex-grow border-t border-slate-200 dark:border-slate-700" />
-                </div>
-                <div className="grid grid-cols-2 gap-4 px-4 py-3">
-                  <button className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-medium leading-normal hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                    <img
-                      alt="Google icon"
-                      className="w-5 h-5"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJ4dKCo0jeG-RFe1PXfjmutHN5QSa5niwV93lDvJERufngcXuCrmwQaRQHElFzzH0znu7mO-9DzP7bsvcG7XTzNHD8VWQtibE4RaUGy7gQxWDR9Zoxjmfsg5UOilJrzF4z-K242IKxa2OkjSr4vDMRN0A2ibPkLzkt2sF_uSJUwzmaH2eyod9-dnnBjv5ck8hqcpNv5GD2wBXGU-gz46S5hOmJ4BqMeNEjUq2eTaa49sPlbSo2nU2yQeF9JRMIElvAUjidz6YWRzM"
-                    />
-                    <span>Tiếp tục với Google</span>
-                  </button>
-                  <button className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-medium leading-normal hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                    <img
-                      alt="Facebook icon"
-                      className="w-5 h-5"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFFqtoXerqWZrQSMUcBBFGtcwPo8iyWJrijKsOLXNX7dmPs92TCNEdnYM6xRM5VFWIkW2xnxNyJTIcdZh2Jmy0UQWUT9h1PjQJ4IJpfHa8Zfz5rTHy2vyUE-9hcCpu6Ahc6DM4GVQgRDhVynb9FNTyMc6f3e7_5TICpV9jHKHlzphXMb0MNFGOe9ilTkYj2Gah-oKoRp5H1UYJL6nKh0lXS1ueNYNdwf3oWBlNHm8fG-ziw3TUApSH87ys1zgC-69lsVwUD0VVZQ8"
-                    />
-                    <span>Tiếp tục với Facebook</span>
-                  </button>
-                </div>
-                <p className="text-slate-600 dark:text-slate-400 text-sm font-normal leading-normal pt-6 px-4 text-center">
-                  Bằng việc tiếp tục, bạn đồng ý với{" "}
-                  <a
-                    className="font-medium text-primary hover:underline"
-                    href="#"
-                  >
-                    Chính sách Bảo mật
-                  </a>{" "}
-                  của chúng tôi.
-                </p>
-              </div>
-            </div>
+  return (
+    <div className="min-h-screen flex justify-center items-center bg-slate-50 dark:bg-[#111821] px-4">
+      <div className="w-full max-w-[520px] bg-white dark:bg-[#1a222e] rounded-xl shadow border border-slate-200 dark:border-slate-700 p-6 md:p-8">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-black text-gray-900 dark:text-white">
+            Đăng ký tài khoản
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+            Đã có tài khoản?{" "}
+            <Link
+              to="/login"
+              className="text-primary font-medium hover:underline"
+            >
+              Đăng nhập
+            </Link>
+          </p>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <p className="mb-4 text-sm text-red-500 text-center">{error}</p>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Username */}
+          <div>
+            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+              Tên người dùng
+            </label>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full h-12 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#111821] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary outline-none"
+              placeholder="Nhập tên của bạn"
+              required
+            />
           </div>
+
+          {/* Email */}
+          <div>
+            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full h-12 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#111821] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary outline-none"
+              placeholder="vidu@email.com"
+              required
+            />
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+              Mật khẩu
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full h-12 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#111821] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary outline-none"
+              placeholder="Nhập mật khẩu"
+              required
+            />
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+              Xác nhận mật khẩu
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full h-12 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-[#111821] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary outline-none"
+              placeholder="Nhập lại mật khẩu"
+              required
+            />
+          </div>
+
+          {/* Terms */}
+          <label className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+            <input type="checkbox" required />
+            Tôi đồng ý với điều khoản sử dụng
+          </label>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            className="w-full h-12 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition shadow"
+          >
+            Đăng ký tài khoản
+          </button>
+        </form>
+
+        {/* Divider */}
+        <div className="flex items-center gap-4 my-6">
+          <hr className="flex-grow border-slate-300 dark:border-slate-700" />
+          <span className="text-sm text-slate-500">Hoặc</span>
+          <hr className="flex-grow border-slate-300 dark:border-slate-700" />
+        </div>
+
+        {/* Social */}
+        <div className="grid grid-cols-2 gap-4">
+          <button className="flex items-center justify-center gap-2 h-11 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                fill="#4285F4"
+              />
+              <path
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                fill="#34A853"
+              />
+              <path
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                fill="#FBBC05"
+              />
+              <path
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                fill="#EA4335"
+              />
+            </svg>
+            <span className="text-sm font-semibold">Google</span>
+          </button>
+          <button className="flex items-center justify-center gap-2 h-11 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+            <svg
+              className="w-5 h-5 text-[#1877F2]"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                fillRule="evenodd"
+                d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span className="text-sm font-semibold">Facebook</span>
+          </button>
         </div>
       </div>
     </div>
   );
 }
-export default Register;

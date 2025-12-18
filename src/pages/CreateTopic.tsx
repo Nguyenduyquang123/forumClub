@@ -11,18 +11,18 @@ function CreateTopic() {
   const [notifyMembers, setNotifyMembers] = useState(false);
   const [userRole, setUserRole] = useState(null);
   const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user")); // Lấy user từ localStorage (nếu bạn lưu khi login)
+  const user = JSON.parse(localStorage.getItem("user")); 
 
   const userId = user?.id;
-  const clubId = id; // tạm thời fix hoặc lấy từ context/router nếu có
+  const clubId = id; 
   const handlePinnedChange = (checked: boolean) => {
     setIsPinned(checked);
-    if (checked) setNotifyMembers(false); // bỏ chọn cái kia
+    if (checked) setNotifyMembers(false); 
   };
 
   const handleNotifyChange = (checked: boolean) => {
     setNotifyMembers(checked);
-    if (checked) setIsPinned(false); // bỏ chọn cái kia
+    if (checked) setIsPinned(false); 
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -65,7 +65,7 @@ function CreateTopic() {
         const res = await axios.get(
           `http://localhost:8000/api/clubs/${clubId}/my-role`,
           {
-            params: { user_id: userId }, // FE gửi userId để backend trả role
+            params: { user_id: userId }, 
           }
         );
         setUserRole(res.data.role);

@@ -7,30 +7,42 @@ import {
   faCalendarDays,
 } from "@fortawesome/free-solid-svg-icons";
 
-const ItemEven = ({ limit }) => {
-  const [events, setEvents] = useState([]);
+type EventType = {
+  id: number;
+  title: string;
+  start_time: string;
+  location?: string;
+  banner?: string;
+};
+
+type ItemEvenProps = {
+  limit?: number;
+};
+
+const ItemEven = ({ limit }: ItemEvenProps) => {
+  const [events, setEvents] = useState<EventType[]>([]);
   const { id: clubId } = useParams();
-  const [openMenuId, setOpenMenuId] = useState(null);
-  const [userRole, setUserRole] = useState(null);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  const user = JSON.parse(localStorage.getItem("user"));
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  // ==========================
-  // 1. Fetch danh sách sự kiện
-  // ==========================
   const fetchEvents = async () => {
     try {
       const res = await axios.get(
         `http://localhost:8000/api/clubs/${clubId}/events`,
-        {
-          params: { user_id: user.id },
-        }
+        { params: { user_id: user.id } }
       );
 
-      setEvents(res.data.events);
+      const now = new Date();
+      const upcomingEvents = (res.data.events || []).filter(
+        (event: EventType) => new Date(event.start_time) > now
+      );
+
+      setEvents(upcomingEvents);
       setUserRole(res.data.user_role_in_club);
     } catch (error) {
-      console.error("Lỗi khi lấy danh sách sự kiện:", error);
+      console.error(error);
     }
   };
 
@@ -38,110 +50,65 @@ const ItemEven = ({ limit }) => {
     fetchEvents();
   }, []);
 
-
-  const toggleMenu = (e, eventId) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setOpenMenuId(openMenuId === eventId ? null : eventId);
-  };
-
-  const deleteEvent = async (eventId) => {
-    try {
-      const res = await axios.delete(
-        `http://localhost:8000/api/events/${eventId}`,
-        {
-          data: { auth_user_id: user.id },
-        }
-      );
-
-      alert(res.data.message);
-
-      // Cập nhật lại danh sách
-      fetchEvents();
-      setOpenMenuId(null);
-    } catch (err) {
-      alert(err.response?.data?.error || "Không thể xóa sự kiện");
-    }
-  };
-
-
-  useEffect(() => {
-    const handleClickOutside = () => setOpenMenuId(null);
-    document.addEventListener("click", handleClickOutside);
-
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
-
   const eventsToShow = limit ? events.slice(0, limit) : events;
 
   return (
     <>
-      {eventsToShow.length > 0 ? (
-        eventsToShow.map((event) => (
-          <div key={event.id} className="relative">
-            <Link
-              to={`/homeClub/${clubId}/even-club/detail-event/${event.id}`}
-              className="flex flex-col bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-            >
-              {/* Banner */}
-              <div
-                className="w-full aspect-video bg-cover bg-center relative"
-                style={{
-                  backgroundImage: `url("${
-                    event?.banner ? event.banner : "/default-banner.jpg"
-                  }")`,
-                }}
-              >
-                {/* Nút 3 chấm */}
-                {(userRole === "owner" || userRole === "admin") && (
-                  <button
-                    onClick={(e) => toggleMenu(e, event.id)}
-                    className="absolute top-2 right-2 p-2 bg-black/40 hover:bg-black/60 rounded-full text-white"
-                  >
-                    <span className="material-symbols-outlined">more_vert</span>
-                  </button>
-                )}
-              </div>
+      {eventsToShow.map((event) => (
+        <div key={event.id} className="relative">
+          <Link
+            to={`/homeClub/${clubId}/even-club/detail-event/${event.id}`}
+            className="bg-white rounded-xl shadow-card overflow-hidden group hover:shadow-lg transition-all duration-300 block"
+          >
+            {/* Banner */}
+            <div className="relative h-64 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
 
-              {/* Nội dung */}
-              <div className="p-4 flex flex-col justify-between flex-1">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
-                    {event.title}
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {(userRole === "owner" || userRole === "admin") && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setOpenMenuId(openMenuId === event.id ? null : event.id);
+                  }}
+                  className="absolute top-4 right-4 z-20 bg-white/90 p-2 rounded-full"
+                >
+                  <span className="material-symbols-outlined">more_vert</span>
+                </button>
+              )}
+
+              <div className="absolute bottom-4 left-4 z-20 text-white">
+                <h2 className="text-2xl font-bold mb-2 line-clamp-2">
+                  {event.title}
+                </h2>
+                <div className="flex items-center gap-4 text-sm">
+                  <span>
                     <FontAwesomeIcon icon={faCalendarDays} />{" "}
                     {new Date(event.start_time).toLocaleString("vi-VN")}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  </span>
+                  <span>
                     <FontAwesomeIcon icon={faLocationDot} />{" "}
-                    {event.location || "Chưa cập nhật địa điểm"}
-                  </p>
+                    {event.location || "Chưa cập nhật"}
+                  </span>
                 </div>
               </div>
-            </Link>
 
-            {/* Popup menu */}
-            {openMenuId === event.id && (
-              <div
-                className="absolute top-10 right-3 bg-white dark:bg-gray-700 shadow-lg rounded-lg border border-gray-200 dark:border-gray-600 py-2 z-50"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  onClick={() => deleteEvent(event.id)}
-                  className="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-600"
-                >
-                  Xóa sự kiện
-                </button>
-              </div>
-            )}
-          </div>
-        ))
-      ) : (
-        <p className="text-gray-500 dark:text-gray-400 text-center col-span-full">
-          Không có sự kiện nào được tìm thấy.
-        </p>
-      )}
+              <img
+                src={event.banner || "/default-banner.jpg"}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              />
+            </div>
+          </Link>
+
+          {/* Menu */}
+          {openMenuId === event.id && (
+            <div className="absolute top-14 right-4 bg-white rounded-lg shadow z-50">
+              <button className="px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-left">
+                Xóa sự kiện
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
     </>
   );
 };

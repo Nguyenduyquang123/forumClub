@@ -45,18 +45,7 @@ function DiscussClub() {
             type="text"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button className="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-gray-100 dark:bg-gray-800 px-3 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-            <span className="material-symbols-outlined !text-lg text-gray-500 dark:text-gray-400">
-              category
-            </span>
-            <p className="text-sm font-medium text-[#111418] dark:text-gray-200">
-              Danh mục
-            </p>
-            <span className="material-symbols-outlined !text-lg text-gray-500 dark:text-gray-400">
-              expand_more
-            </span>
-          </button>
+        <div className="flex flex-wrap items-center gap-3"> 
           <button className="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-gray-100 dark:bg-gray-800 px-3 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
             <span className="material-symbols-outlined !text-lg text-gray-500 dark:text-gray-400">
               calendar_today
@@ -68,17 +57,7 @@ function DiscussClub() {
               expand_more
             </span>
           </button>
-          <button className="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-gray-100 dark:bg-gray-800 px-3 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-            <span className="material-symbols-outlined !text-lg text-gray-500 dark:text-gray-400">
-              trending_up
-            </span>
-            <p className="text-sm font-medium text-[#111418] dark:text-gray-200">
-              Độ phổ biến
-            </p>
-            <span className="material-symbols-outlined !text-lg text-gray-500 dark:text-gray-400">
-              expand_more
-            </span>
-          </button>
+     
           <div className="flex-grow"></div>
           <button className="flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-gray-100 dark:bg-gray-800 px-3 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
             <span className="material-symbols-outlined !text-lg text-gray-500 dark:text-gray-400">

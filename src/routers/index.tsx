@@ -18,6 +18,14 @@ import UserClubs from "../pages/UserClubs";
 import ClubNotification from "../pages/ClubNotification";
 import MyPostClub from "../pages/MyPostClub";
 import ClubsSetting from "../pages/ClubsSetting";
+import NotificationDetail from "../pages/NotificationDetail";
+import MyCalendar from "../pages/MyCalendar";
+import Traditional from "../pages/Traditional";
+import ListClubs from "../pages/ListClubs";
+import DetailClub from "../pages/DetailClub";
+import AddMember from "../pages/AddMember";
+import ConfirmationEvent from "../pages/ConfirmationEvent";
+import ClubStats from "../pages/ClubStats";
 const publicRoutes = [
   { path: "/", component: Home },
   { path: "/createClub", component: CreateClub },
@@ -78,7 +86,7 @@ const publicRoutes = [
     component: ClubNotification,
     layout: "navbarClub",
   },
-    {
+  {
     path: "/homeClub/:id/my-post-club",
     component: MyPostClub,
     layout: "navbarClub",
@@ -86,6 +94,41 @@ const publicRoutes = [
   {
     path: "/homeClub/:id/club-settings",
     component: ClubsSetting,
+    layout: "navbarClub",
+  },
+  {
+    path: "/notification/:inviteId",
+    component: NotificationDetail,
+  },
+  {
+    path: "/my-calendar",
+    component: MyCalendar,
+  },
+  {
+    path: "/homeClub/:id/traditional",
+    component: Traditional,
+  },
+  {
+    path: "/list-clubs",
+    component: ListClubs,
+  },
+  {
+    path: "/list-clubs/:clubId",
+    component: DetailClub,
+  },
+  {
+    path: "/homeClub/:id/member",
+    component: AddMember,
+    layout: "navbarClub",
+  },
+  {
+    path: "/homeClub/:id/even-club/detail-event/:eventId/list-member",
+    component: ConfirmationEvent,
+    layout: "navbarClub",
+  },
+  {
+    path: "/homeClub/:id/Statistic",
+    component: ClubStats,
     layout: "navbarClub",
   },
 ];

@@ -104,7 +104,7 @@ function CreateClub() {
                 Tên Câu lạc bộ
               </p>
               <input
-                className="form-input flex w-full min-w-0 flex-1 resize-none rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-primary h-12 placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 text-base font-normal leading-normal"
+                className="p-3 form-input flex w-full min-w-0 flex-1 resize-none rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:border-primary h-12 placeholder:text-gray-400 dark:placeholder:text-gray-500 px-4 text-base font-normal leading-normal"
                 placeholder="CLB Yêu Sách Sài Gòn"
                 value={selectName}
                 onChange={(e) => setSelectName(e.target.value)}
