@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   BarChart,
   Bar,
@@ -55,6 +56,7 @@ export default function ClubStats() {
               )
               .then(() => {
                 alert("Đã tạo thống kê!");
+              
                 window.location.reload();
               })
               .catch((err) => console.error(err));

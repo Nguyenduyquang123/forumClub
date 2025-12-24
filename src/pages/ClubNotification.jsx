@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import TimeAgo from "timeago-react";
 const colors = [
   { bg: "bg-red-100 dark:bg-red-900/50", text: "text-red-600 dark:text-red-400", border: "border-red-500/50 dark:border-red-500/30" },
@@ -54,6 +55,7 @@ const token = localStorage.getItem("token") || "";
       setPosts((prev) => prev.filter((p) => p.id !== postId));
     } catch (err) {
       alert("Không thể xóa bài!");
+      toast.error("Xóa bài thất bại!");
       console.error(err);
     }
   };

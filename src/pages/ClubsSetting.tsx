@@ -1,6 +1,8 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { ToastConfirm } from "../components/toastConfirm";
+import { toast } from "react-toastify";
 
 function ClubsSetting() {
   const [form, setForm] = useState({
@@ -16,24 +18,48 @@ function ClubsSetting() {
   const user = JSON.parse(localStorage.getItem("user"));
   const [privacy, setPrivacy] = useState<number>(1);
   const [privacyStatus, setPrivacyStatus] = useState("");
+  const [memberClub, setMemberClub] = useState(null);
   const userId = user?.id;
   const { id: clubId } = useParams();
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:8000/api/clubs/${clubId}/my-role`,
+          {
+            params: { user_id: user.id },
+          }
+        );
+        setMemberClub(res.data);
+        console.log("memberClub", memberClub);
+      } catch (err) {
+        console.error("Lỗi khi lấy vai trò thành viên:", err);
+      }
+    };
+
+    fetchRole();
+  }, [clubId, user.id]);
+
   const handleDeleteClub = async () => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa câu lạc bộ này?")) {
-      return;
-    }
+    ToastConfirm(
+      "Bạn có chắc chắn muốn xóa câu lạc bộ này không?",
+      async () => {
+        try {
+          await axios.delete(`http://localhost:8000/api/clubs/${clubId}`, {
+            data: { user_id: userId },
+          });
 
-    try {
-      await axios.delete(`http://localhost:8000/api/clubs/${clubId}`, {
-        data: { user_id: userId },
-      });
-
-      alert("Xóa câu lạc bộ thành công!");
-      window.location.href = "/userClubs";
-    } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Lỗi khi xóa câu lạc bộ.");
-    }
+        
+          toast.success("Xóa câu lạc bộ thành công!");
+          window.location.href = "/userClubs";
+        } catch (err) {
+          console.error(err);
+          alert(err.response?.data?.message || "Lỗi khi xóa câu lạc bộ.");
+          toast.error("Xóa câu lạc bộ thất bại!");
+        }
+      }
+    );
   };
 
   useEffect(() => {
@@ -66,7 +92,6 @@ function ClubsSetting() {
       setClubSettings(response.data);
 
       setPrivacy(Number(response.data?.is_public));
-      console.log("12312312", privacy);
     } catch (err) {
       console.error("Lỗi khi lấy cài đặt câu lạc bộ:", err);
     }
@@ -94,10 +119,12 @@ function ClubsSetting() {
         }
       );
 
-      alert("Cập nhật thành công!");
+
+      toast.success("Cập nhật thành công!");
     } catch (err) {
       console.error(err);
-      alert("Cập nhật thất bại");
+      toast.error("Cập nhật thất bại!");
+   
     }
   };
   const handleSendInvite = async () => {
@@ -126,6 +153,7 @@ function ClubsSetting() {
       );
 
       setStatus("✅ Đã gửi lời mời thành công!");
+      toast.success("Đã gửi lời mời thành công!");
       setInput("");
     } catch (error) {
       console.error("Chi tiết lỗi:", error.response?.data || error.message);
@@ -133,6 +161,7 @@ function ClubsSetting() {
         setStatus("⚠️ " + error.response.data.message);
       } else {
         setStatus("⚠️ Gửi lời mời thất bại!");
+        toast.error("Gửi lời mời thất bại!");
       }
     }
   };
@@ -149,9 +178,11 @@ function ClubsSetting() {
       );
 
       setPrivacyStatus("✅ Đã cập nhật quyền riêng tư");
+      toast.success("Cập nhật quyền riêng tư thành công!");
     } catch (err) {
       console.error(err);
       setPrivacyStatus("❌ Cập nhật quyền riêng tư thất bại");
+      toast.error("Cập nhật quyền riêng tư thất bại!");
     }
   };
   useEffect(() => {
@@ -303,101 +334,105 @@ function ClubsSetting() {
             </div>
           </div>
         </section>
+        {memberClub?.role === "owner" && (
+          <>
+            <section>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                Quyền riêng tư
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="relative flex cursor-pointer rounded-lg border bg-white dark:bg-slate-800 p-4 shadow-sm focus:outline-none hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                  <input
+                    className="sr-only peer"
+                    name="privacy-setting"
+                    type="radio"
+                    value="public"
+                    checked={privacy === 1}
+                    onChange={() => setPrivacy(1)}
+                  />
 
-        <section>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-            Quyền riêng tư
-          </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="relative flex cursor-pointer rounded-lg border bg-white dark:bg-slate-800 p-4 shadow-sm focus:outline-none hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-              <input
-                className="sr-only peer"
-                name="privacy-setting"
-                type="radio"
-                value="public"
-                checked={privacy === 1}
-                onChange={() => setPrivacy(1)}
-              />
-
-              <span className="flex flex-1">
-                <span className="flex flex-col">
-                  <span className="block text-sm font-medium text-slate-900 dark:text-white">
-                    Công khai (Public)
+                  <span className="flex flex-1">
+                    <span className="flex flex-col">
+                      <span className="block text-sm font-medium text-slate-900 dark:text-white">
+                        Công khai (Public)
+                      </span>
+                      <span className="mt-1 flex items-center text-sm text-slate-500 dark:text-slate-400">
+                        Bất kỳ ai cũng có thể tìm thấy và xem nội dung câu lạc
+                        bộ.
+                      </span>
+                    </span>
                   </span>
-                  <span className="mt-1 flex items-center text-sm text-slate-500 dark:text-slate-400">
-                    Bất kỳ ai cũng có thể tìm thấy và xem nội dung câu lạc bộ.
+
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -inset-px rounded-lg border-2 border-transparent peer-checked:border-primary peer-focus:border-primary"
+                  ></span>
+                </label>
+                <label className="relative flex cursor-pointer rounded-lg border bg-white dark:bg-slate-800 p-4 shadow-sm focus:outline-none hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                  <input
+                    className="sr-only peer"
+                    name="privacy-setting"
+                    type="radio"
+                    value="private"
+                    checked={privacy === 0}
+                    onChange={() => setPrivacy(0)}
+                  />
+
+                  <span className="flex flex-1">
+                    <span className="flex flex-col">
+                      <span className="block text-sm font-medium text-slate-900 dark:text-white">
+                        Riêng tư (Private)
+                      </span>
+                      <span className="mt-1 flex items-center text-sm text-slate-500 dark:text-slate-400">
+                        Chỉ thành viên được duyệt mới có thể xem nội dung.
+                      </span>
+                    </span>
                   </span>
-                </span>
-              </span>
 
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute -inset-px rounded-lg border-2 border-transparent peer-checked:border-primary peer-focus:border-primary"
-              ></span>
-            </label>
-            <label className="relative flex cursor-pointer rounded-lg border bg-white dark:bg-slate-800 p-4 shadow-sm focus:outline-none hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-              <input
-                className="sr-only peer"
-                name="privacy-setting"
-                type="radio"
-                value="private"
-                checked={privacy === 0}
-                onChange={() => setPrivacy(0)}
-              />
-
-              <span className="flex flex-1">
-                <span className="flex flex-col">
-                  <span className="block text-sm font-medium text-slate-900 dark:text-white">
-                    Riêng tư (Private)
-                  </span>
-                  <span className="mt-1 flex items-center text-sm text-slate-500 dark:text-slate-400">
-                    Chỉ thành viên được duyệt mới có thể xem nội dung.
-                  </span>
-                </span>
-              </span>
-
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute -inset-px rounded-lg border-2 border-transparent peer-checked:border-primary peer-focus:border-primary"
-              ></span>
-            </label>
-          </div>
-          <div className="flex justify-end mt-4">
-            <button
-              onClick={handleUpdatePrivacy}
-              className="px-5 py-2 bg-primary text-white rounded-md font-semibold hover:bg-blue-700"
-            >
-              Lưu quyền riêng tư
-            </button>
-          </div>
-
-          {privacyStatus && (
-            <p className="mt-2 text-sm text-slate-600">{privacyStatus}</p>
-          )}
-        </section>
-
-        <section>
-          <div className="bg-danger-light dark:bg-danger-dark/20 border border-danger/30 rounded-lg p-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                  Xóa câu lạc bộ
-                </h3>
-                <p className="text-slate-600 dark:text-slate-300 mt-1 max-w-xl">
-                  Một khi bạn xóa câu lạc bộ, sẽ không thể khôi phục lại. Tất cả
-                  bài đăng, bình luận và dữ liệu thành viên sẽ bị xóa vĩnh viễn.
-                  Vui lòng chắc chắn.
-                </p>
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -inset-px rounded-lg border-2 border-transparent peer-checked:border-primary peer-focus:border-primary"
+                  ></span>
+                </label>
               </div>
-              <button
-                onClick={handleDeleteClub}
-                className="mt-4 md:mt-0 bg-red-500 text-white px-4 py-2 rounded-md font-semibold hover:bg-red-700"
-              >
-                Xóa câu lạc bộ
-              </button>
-            </div>
-          </div>
-        </section>
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={handleUpdatePrivacy}
+                  className="px-5 py-2 bg-primary text-white rounded-md font-semibold hover:bg-blue-700"
+                >
+                  Lưu quyền riêng tư
+                </button>
+              </div>
+
+              {privacyStatus && (
+                <p className="mt-2 text-sm text-slate-600">{privacyStatus}</p>
+              )}
+            </section>
+
+            <section>
+              <div className="bg-danger-light dark:bg-danger-dark/20 border border-danger/30 rounded-lg p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                      Xóa câu lạc bộ
+                    </h3>
+                    <p className="text-slate-600 dark:text-slate-300 mt-1 max-w-xl">
+                      Một khi bạn xóa câu lạc bộ, sẽ không thể khôi phục lại.
+                      Tất cả bài đăng, bình luận và dữ liệu thành viên sẽ bị xóa
+                      vĩnh viễn. Vui lòng chắc chắn.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleDeleteClub}
+                    className="mt-4 md:mt-0 bg-red-500 text-white px-4 py-2 rounded-md font-semibold hover:bg-red-700"
+                  >
+                    Xóa câu lạc bộ
+                  </button>
+                </div>
+              </div>
+            </section>
+          </>
+        )}
       </div>
     </div>
   );

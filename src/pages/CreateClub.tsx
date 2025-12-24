@@ -9,6 +9,7 @@ import {
 } from "../components/ui/select";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 function CreateClub() {
   const [selectName, setSelectName] = useState("");
@@ -64,6 +65,7 @@ function CreateClub() {
       const formData = new FormData();
       formData.append("name", selectName);
       formData.append("description", selectDescription);
+      formData.append("is_public", selectPublic);
       formData.append("owner_id", user ? user.user.id.toString() : "0000");
       formData.append("category_id", selectCategory);
 
@@ -79,8 +81,8 @@ function CreateClub() {
         }
       );
       navigate(`/userClubs`);
+      toast.success("Tạo câu lạc bộ thành công!");
 
-      console.log("✅ Club created successfully:", res.data);
     } catch (error) {
       console.error("❌ Error creating club:", error.response?.data || error);
     }
@@ -133,8 +135,8 @@ function CreateClub() {
                       name="club-type"
                       type="radio"
                       value="public"
-                      checked={selectPublic === "public"}
-                      onChange={() => setSelectPublic("public")}
+                      checked={selectPublic === "1"}
+                      onChange={() => setSelectPublic("1")}
                     />
                     <span className="ml-3 text-gray-700 dark:text-gray-300">
                       Công khai
@@ -146,8 +148,8 @@ function CreateClub() {
                       name="club-type"
                       type="radio"
                       value="private"
-                      checked={selectPublic === "private"}
-                      onChange={() => setSelectPublic("private")}
+                      checked={selectPublic === "0"}
+                      onChange={() => setSelectPublic("0")}
                     />
                     <span className="ml-3 text-gray-700 dark:text-gray-300">
                       Riêng tư

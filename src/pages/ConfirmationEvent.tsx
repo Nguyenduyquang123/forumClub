@@ -86,6 +86,7 @@ function ConfirmationEvent() {
       `http://localhost:8000/api/events/${eventId}/participants/${userId}/confirm`
     );
     fetchMembers();
+    
   };
 
   // Huỷ

@@ -110,7 +110,8 @@ function MyProfile() {
                       Tổng quan
                     </p>
                   </a>
-                  <a
+                  <Link
+                    to="/notification"
                     className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800"
                     href="#"
                   >
@@ -120,7 +121,7 @@ function MyProfile() {
                     <p className="text-sm font-medium leading-normal">
                       Thông báo
                     </p>
-                  </a>
+                  </Link>
                   <a
                     className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800"
                     href="#"
@@ -260,7 +261,6 @@ function MyProfile() {
                             </div>
                           </div>
                         </div>
-                 
                       </div>
                     </Link>
                   ))}

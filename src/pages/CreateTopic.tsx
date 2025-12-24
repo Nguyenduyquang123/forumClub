@@ -1,9 +1,13 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams,useNavigate } from "react-router-dom";
 import RichTextEditor from "../components/RichTextEditor";
+import { generateContentFromTitle } from "../services/geminiService";
+import { toast } from "react-toastify";
 
 function CreateTopic() {
+  const [loadingAI, setLoadingAI] = useState(false);
+
   const { id } = useParams();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -11,18 +15,20 @@ function CreateTopic() {
   const [notifyMembers, setNotifyMembers] = useState(false);
   const [userRole, setUserRole] = useState(null);
   const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user")); 
+  const user = JSON.parse(localStorage.getItem("user"));
+  const [value, setValue] = useState(content);
 
   const userId = user?.id;
-  const clubId = id; 
+  const clubId = id;
+  const navigate = useNavigate();
   const handlePinnedChange = (checked: boolean) => {
     setIsPinned(checked);
-    if (checked) setNotifyMembers(false); 
+    if (checked) setNotifyMembers(false);
   };
 
   const handleNotifyChange = (checked: boolean) => {
     setNotifyMembers(checked);
-    if (checked) setIsPinned(false); 
+    if (checked) setIsPinned(false);
   };
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,15 +54,17 @@ function CreateTopic() {
         },
       });
 
-      alert("Đăng bài thành công!");
+
+      toast.success("Đăng bài thành công!");
       console.log("Bài viết:", res.data);
       setTitle("");
       setContent("");
       setIsPinned(false);
       setNotifyMembers(false);
+      navigate(`/homeClub/${clubId}/discuss-club`);
     } catch (error) {
       console.error("Lỗi khi đăng bài:", error);
-      alert("Không thể đăng bài. Kiểm tra console để biết thêm chi tiết.");
+      toast.error("Đăng bài thất bại!");
     }
   };
   useEffect(() => {
@@ -65,7 +73,7 @@ function CreateTopic() {
         const res = await axios.get(
           `http://localhost:8000/api/clubs/${clubId}/my-role`,
           {
-            params: { user_id: userId }, 
+            params: { user_id: userId },
           }
         );
         setUserRole(res.data.role);
@@ -75,6 +83,44 @@ function CreateTopic() {
     };
     fetchData();
   }, [clubId]);
+  const textToHTML = (text: string) => {
+    if (!text) return "";
+
+    return (
+      text
+        .trim()
+        // Chuẩn hóa xuống dòng Windows → Unix
+        .replace(/\r\n/g, "\n")
+        // Tách đoạn: dòng trống (có thể có space)
+        .split(/\n\s*\n/)
+        .map((p) => {
+          const safe = p.trim().replace(/\n/g, "<br />");
+          return safe ? `<p>${safe}</p>` : "";
+        })
+        .join("")
+    );
+  };
+
+  const handleGenerateContent = async () => {
+    try {
+      setLoadingAI(true);
+
+      const aiContent = await generateContentFromTitle(title);
+
+      // Đổ thẳng vào RichTextEditor
+      const html = textToHTML(aiContent);
+
+      setContent(html);
+      console.log("Generated AI content:", aiContent);
+    } catch (err) {
+      alert("Không thể tạo nội dung từ AI");
+    } finally {
+      setLoadingAI(false);
+    }
+  };
+  useEffect(() => {
+    setValue(content);
+  }, [content]);
   console.log("User role:", userRole);
   return (
     <div className="container mx-auto max-w-7xl">
@@ -129,6 +175,54 @@ function CreateTopic() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
+              <button
+                type="button"
+                disabled={!title.trim() || loadingAI}
+                onClick={handleGenerateContent}
+                className="
+    mt-3 inline-flex items-center gap-2
+    px-4 py-2 rounded-lg
+    text-sm font-medium
+    text-white
+    bg-gradient-to-r from-indigo-500 to-purple-600
+    hover:from-indigo-600 hover:to-purple-700
+    focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2
+    disabled:opacity-50 disabled:cursor-not-allowed
+    transition-all duration-200
+    shadow-sm hover:shadow-md
+  "
+              >
+                {loadingAI ? (
+                  <>
+                    <svg
+                      className="w-4 h-4 animate-spin"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      />
+                    </svg>
+                    Đang tạo nội dung...
+                  </>
+                ) : (
+                  <>
+                    <span>✨</span>
+                    Áp dụng gợi ý AI
+                  </>
+                )}
+              </button>
+
               <p className="text-red-600 dark:text-red-400 text-sm mt-2 hidden">
                 Tiêu đề không được để trống.
               </p>

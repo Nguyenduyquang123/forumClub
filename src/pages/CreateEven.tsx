@@ -1,7 +1,9 @@
 import { useState } from "react";
 import axios from "axios";
-import { useParams } from "react-router-dom";
+import {  useNavigate, useParams } from "react-router-dom";
 import RichTextEditor from "../components/RichTextEditor";
+import { generateEventDescription } from "../services/geminiService";
+import { toast } from "react-toastify";
 
 function CreateEvent() {
   const { id } = useParams();
@@ -9,7 +11,7 @@ function CreateEvent() {
   const [clubId, setClubId] = useState(id);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-
+  const [loadingAI, setLoadingAI] = useState(false);
   const [form, setForm] = useState({
     club_id: clubId,
     created_by: user.id,
@@ -23,6 +25,20 @@ function CreateEvent() {
     notify: false,
     require_registration: false,
   });
+  const navigate = useNavigate();
+  const textToHTML = (text: string) => {
+    if (!text) return "";
+
+    return text
+      .trim()
+      .replace(/\r\n/g, "\n") // chuẩn hóa Windows
+      .split(/\n\s*\n/) // đoạn = dòng trống
+      .map((p) => {
+        const line = p.trim().replace(/\n/g, "<br />");
+        return line ? `<p>${line}</p>` : "";
+      })
+      .join("");
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -66,7 +82,6 @@ function CreateEvent() {
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
-      alert("Tạo sự kiện thành công!");
       // reset form
       setForm({
         club_id: clubId,
@@ -81,8 +96,34 @@ function CreateEvent() {
         notify: false,
         require_registration: false,
       });
+      toast.success("Tạo sự kiện thành công!");
+      navigate(`/homeClub/${clubId}/even-club`);
     } catch (err) {
       console.error("Lỗi Axios:", err.response?.data || err);
+     
+    }
+  };
+  const handleGenerateDescription = async () => {
+    if (!form.title.trim()) {
+      alert("Vui lòng nhập tên sự kiện trước");
+      return;
+    }
+
+    try {
+      setLoadingAI(true);
+
+      const aiText = await generateEventDescription(form.title);
+      const html = textToHTML(aiText);
+
+      setForm((prev) => ({
+        ...prev,
+        description: html,
+      }));
+      console.log("Generated AI description:", form.description);
+    } catch (e) {
+      alert("Không thể tạo mô tả sự kiện");
+    } finally {
+      setLoadingAI(false);
     }
   };
   console.log(form);
@@ -105,6 +146,54 @@ function CreateEvent() {
               value={form.title}
               onChange={handleChange}
             />
+     
+            <button
+              type="button"
+              disabled={!form.title.trim() || loadingAI}
+              onClick={handleGenerateDescription}
+              className="
+    mt-3 inline-flex items-center gap-2
+    px-4 py-2 rounded-lg
+    text-sm font-medium
+    text-white
+    bg-gradient-to-r from-indigo-500 to-purple-600
+    hover:from-indigo-600 hover:to-purple-700
+    focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2
+    disabled:opacity-50 disabled:cursor-not-allowed
+    transition-all duration-200
+    shadow-sm hover:shadow-md
+  "
+            >
+              {loadingAI ? (
+                <>
+                  <svg
+                    className="w-4 h-4 animate-spin"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    />
+                  </svg>
+                  Đang tạo nội dung...
+                </>
+              ) : (
+                <>
+                  <span>✨</span>
+                  Áp dụng gợi ý AI
+                </>
+              )}
+            </button>
           </label>
         </div>
         <div className="flex flex-col p-4">
@@ -118,7 +207,6 @@ function CreateEvent() {
               </p>
             </div>
 
-            
             <label
               htmlFor="banner"
               className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#f0f2f4] dark:bg-gray-700 text-[#111418] dark:text-white text-sm font-bold leading-normal tracking-[0.015em]"
@@ -126,7 +214,6 @@ function CreateEvent() {
               Chọn ảnh
             </label>
 
-            
             <input
               id="banner"
               type="file"
@@ -135,7 +222,6 @@ function CreateEvent() {
               className="hidden"
             />
 
-            
             {file && (
               <p className="text-sm text-gray-500 mt-2">
                 Đã chọn: <span className="font-semibold">{file.name}</span>
@@ -147,7 +233,9 @@ function CreateEvent() {
           <label className="flex flex-col min-w-40 flex-1">
             <RichTextEditor
               content={form.description}
-              setContent={(html) => setForm({ ...form, description: html })}
+              setContent={(html) =>
+                setForm((prev) => ({ ...prev, description: html }))
+              }
             />
           </label>
         </div>
@@ -211,7 +299,6 @@ function CreateEvent() {
       </section>
 
       <section>
-        
         <div className="flex max-w-xs flex-wrap items-end gap-4 px-4 py-3">
           <label className="flex flex-col min-w-40 flex-1">
             <p className="text-[#111418] dark:text-gray-300 text-base font-medium leading-normal pb-2">

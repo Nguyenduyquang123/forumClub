@@ -92,6 +92,9 @@ function ListClubs() {
                   <p className="text-slate-900 dark:text-white text-base font-medium leading-normal line-clamp-1">
                     {club.name}
                   </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Câu lạc bộ
+                  </p>
                 </div>
               </div>
 

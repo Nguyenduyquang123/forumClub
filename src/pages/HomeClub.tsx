@@ -1,24 +1,55 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ItemEven from "../components/ItemEven";
 import ItemDiscuss from "../components/ItemDiscuss";
 import TimeAgo from "timeago-react";
 
+interface Club {
+  id: string;
+  [key: string]: unknown;
+}
+
+interface JoinRequest {
+  id: string;
+  user: {
+    id: string;
+    displayName: string;
+    avatarUrl?: string;
+  };
+  created_at: string;
+}
+
+interface Member {
+  user: {
+    id: string;
+    displayName: string;
+    avatarUrl?: string;
+  };
+  joined_at: string;
+}
+
+interface Post {
+  id: string;
+  created_at: string;
+  notify_members?: number;
+  [key: string]: unknown;
+}
+
 function HomeClub() {
   const { id: clubId } = useParams();
   const navigate = useNavigate();
-  const [currentMember, setCurrentMember] = useState();
-  const [club, setClub] = useState<any>(null);
+  const [currentMember, setCurrentMember] = useState<string>();
+  const [club, setClub] = useState<Club | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pendingMembers, setPendingMembers] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
+  const [pendingMembers, setPendingMembers] = useState<JoinRequest[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [countNotify, setCountNotify] = useState(0);
   const [countDiscuss, setCountDiscuss] = useState(0);
   const [countEvents, setCountEvents] = useState(0);
-  const [allNotifies, setAllNotifies] = useState<any[]>([]);
-  const [allDiscusses, setAllDiscusses] = useState<any[]>([]);
-  const [allEvents, setAllEvents] = useState<any[]>([]);
+  const [allNotifies, setAllNotifies] = useState<Post[]>([]);
+  const [allDiscusses, setAllDiscusses] = useState<Post[]>([]);
+  const [allEvents, setAllEvents] = useState<number>(0);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const token = localStorage.getItem("token");
@@ -59,8 +90,8 @@ function HomeClub() {
         );
 
         setClub(res.data);
-      } catch (err: any) {
-        const status = err.response?.status;
+      } catch (err: unknown) {
+        const status = (err as AxiosError).response?.status;
 
         if (status === 401) {
           alert("🔒 Phiên đăng nhập hết hạn, vui lòng đăng nhập lại");
@@ -122,7 +153,7 @@ function HomeClub() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const countTodayNotify = posts.filter((p) => {
+        const countTodayNotify = posts.filter((p: Post) => {
           const postDate = new Date(p.created_at);
           postDate.setHours(0, 0, 0, 0);
           return (
@@ -130,7 +161,7 @@ function HomeClub() {
           );
         }).length;
 
-        const countTodayDiscuss = posts.filter((p) => {
+        const countTodayDiscuss = posts.filter((p: Post) => {
           const postDate = new Date(p.created_at);
           postDate.setHours(0, 0, 0, 0);
           return (
@@ -141,9 +172,9 @@ function HomeClub() {
 
         setCountNotify(countTodayNotify);
         setCountDiscuss(countTodayDiscuss);
-        setAllNotifies(posts.filter((p) => p.notify_members === 1));
+        setAllNotifies(posts.filter((p: Post) => p.notify_members === 1));
         setAllDiscusses(
-          posts.filter((p) => !p.notify_members || p.notify_members === 0)
+          posts.filter((p: Post) => !p.notify_members || p.notify_members === 0)
         );
 
         const res = await axios.get(
@@ -157,7 +188,7 @@ function HomeClub() {
         const tomorrow = new Date(today);
         tomorrow.setDate(today.getDate() + 1);
 
-        const upcomingAndCurrent = (res.data.events || []).filter((event) => {
+        const upcomingAndCurrent = (res.data.events || []).filter((event: { start_time: string; end_time: string }) => {
           const start = new Date(event.start_time);
           const end = new Date(event.end_time);
 

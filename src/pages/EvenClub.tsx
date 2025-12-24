@@ -6,6 +6,7 @@ import {
   faLocationDot,
 } from "@fortawesome/free-solid-svg-icons";
 import axios from "axios";
+import { toast } from "react-toastify";
 
 function EvenClub() {
   const { id: clubId } = useParams();
@@ -16,6 +17,8 @@ function EvenClub() {
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const EVENTS_PER_PAGE = 8;
+  const [search, setSearch] = useState("");
+
   // --- Lấy role ---
   useEffect(() => {
     const fetchRole = async () => {
@@ -73,17 +76,26 @@ function EvenClub() {
           const startDay = e.start_time.split(" ")[0];
           const endDay = e.end_time.split(" ")[0];
 
-          switch (activeTab) {
-            case "ongoing":
-              return startDay <= today && today <= endDay;
-            case "upcoming":
-              return startDay > today;
-            case "past":
-              return endDay < today;
-            default:
-              return true;
-          }
+          const matchTab = (() => {
+            switch (activeTab) {
+              case "ongoing":
+                return startDay <= today && today <= endDay;
+              case "upcoming":
+                return startDay > today;
+              case "past":
+                return endDay < today;
+              default:
+                return true;
+            }
+          })();
+
+          const matchSearch =
+            e.title?.toLowerCase().includes(search.toLowerCase()) ||
+            e.location?.toLowerCase().includes(search.toLowerCase());
+
+          return matchTab && matchSearch;
         });
+
   const totalPages = Math.ceil(filteredEvents.length / EVENTS_PER_PAGE);
 
   const paginatedEvents = filteredEvents.slice(
@@ -103,17 +115,19 @@ function EvenClub() {
       await axios.delete(`http://localhost:8000/api/events/${eventId}`, {
         data: { auth_user_id: user.id },
       });
-      alert("Xóa sự kiện thành công");
+      toast.success("Xóa sự kiện thành công!");
       setEvents(events.filter((e) => e.id !== eventId));
       setOpenMenuId(null);
     } catch (err) {
       alert("Không thể xóa sự kiện");
+      toast.error("Xóa sự kiện thất bại!");
     }
   };
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab]);
+  }, [activeTab, search]);
+  
 
   return (
     <div className="layout-content-container flex flex-col w-full max-w-6xl flex-1 gap-6">
@@ -161,6 +175,23 @@ function EvenClub() {
               Tạo sự kiện
             </Link>
           )}
+      </div>
+      <div className="relative max-w-md mt-2">
+        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          search
+        </span>
+        <input
+          type="text"
+          placeholder="Tìm kiếm sự kiện..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="w-full h-11 pl-10 pr-4 rounded-xl border border-gray-200 dark:border-gray-700
+      bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white
+      focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
       </div>
 
       {/* List sự kiện */}

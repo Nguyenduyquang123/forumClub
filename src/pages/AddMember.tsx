@@ -1,28 +1,37 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+
+interface JoinRequest {
+  id: number;
+  user?: {
+    displayName: string;
+    avatarUrl: string;
+  };
+  created_at: string;
+}
 
 function AddMember() {
   const { id:clubId } = useParams();
-  const [requests, setRequests] = useState([]);
+  const [requests, setRequests] = useState<JoinRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   // ===== LOAD DATA =====
-  const loadRequests = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get(
-        `http://localhost:8000/api/clubs/${clubId}/join-requests`
-      );
-      setRequests(res.data || []);
-    } catch (error) {
-      console.error("Load requests error: ", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const loadRequests = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.get(
+          `http://localhost:8000/api/clubs/${clubId}/join-requests`
+        );
+        setRequests(res.data || []);
+      } catch (error) {
+        console.error("Load requests error: ", error);
+      } finally {
+        setLoading(false);
+      }
+    };
     loadRequests();
   }, [clubId]);
 
@@ -32,9 +41,16 @@ function AddMember() {
       await axios.post(
         `http://localhost:8000/api/clubs/${clubId}/join-requests/${reqId}/approve`
       );
-      loadRequests();
+      setLoading(true);
+      const res = await axios.get(
+        `http://localhost:8000/api/clubs/${clubId}/join-requests`
+      );
+      setRequests(res.data || []);
+      setLoading(false);
+      toast.success("Đã chấp nhận yêu cầu!");
     } catch (error) {
       console.error("Approve error:", error);
+      setLoading(false);
     }
   };
 
@@ -44,9 +60,16 @@ function AddMember() {
       await axios.post(
         `http://localhost:8000/api/clubs/${clubId}/join-requests/${reqId}/reject`
       );
-      loadRequests();
+      setLoading(true);
+      const res = await axios.get(
+        `http://localhost:8000/api/clubs/${clubId}/join-requests`
+      );
+      setRequests(res.data || []);
+      setLoading(false);
+      toast.success("Đã từ chối yêu cầu!");
     } catch (error) {
       console.error("Reject error:", error);
+      setLoading(false);
     }
   };
 
@@ -82,7 +105,7 @@ function AddMember() {
             )}
 
             {/* Có yêu cầu */}
-            {requests.map((req: any) => (
+            {requests.map((req: JoinRequest) => (
               <div
                 key={req.id}
                 className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150"

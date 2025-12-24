@@ -3,13 +3,46 @@ import { useEffect, useState } from "react";
 import TimeAgo from "timeago-react";
 import "../utils/viLocale";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 function Notification() {
-  const [invites, setInvites] = useState([]);
+  // minimal runtime types for notifications/invites
+  type User = { id: number; displayName?: string; avatarUrl?: string };
+  type Club = { id: number; name?: string; avatar_url?: string };
+  type NotificationItem = {
+    id: number;
+    type: string;
+    created_at: string;
+    is_read: number | 0 | 1;
+    from_user?: User;
+    from_user_id?: number;
+    displayUsers?: User[];
+    users?: User[];
+    ids?: number[];
+    related_post_id?: number;
+    related_comment_id?: number;
+    title?: string;
+    message?: string;
+    club?: Club;
+    club_id?: number;
+    displayText?: string;
+  };
+  type Invite = {
+    id: number;
+    club: Club & { id: number; avatar_url?: string };
+    created_at: string;
+  };
+
+  const [invites, setInvites] = useState<Invite[]>([]);
   const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user"));
+  const user = JSON.parse(localStorage.getItem("user") || "null");
   const userId = user?.id;
-  const [notifications, setNotifications] = useState([]);
+  const [filterRead, setFilterRead] = useState<"all" | "unread">("all");
+  const [filterType, setFilterType] = useState<
+    "all" | "comment" | "invite" | "event" | "other"
+  >("all");
+
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const ITEMS_PER_PAGE = 5;
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,11 +57,12 @@ function Notification() {
 
       // Cập nhật UI không cần reload
       setNotifications((prev) => prev.filter((n) => n.id !== id));
+      toast.success("Xóa thông báo thành công!");
     } catch (err) {
       console.log(err);
     }
   };
-  const markAsReadGroup = async (noti) => {
+  const markAsReadGroup = async (noti: NotificationItem) => {
     try {
       const ids = Array.isArray(noti.ids) ? noti.ids : noti.id ? [noti.id] : [];
       if (ids.length === 0) return;
@@ -47,12 +81,14 @@ function Notification() {
             : n
         )
       );
+      
+     
     } catch (err) {
       console.error(err);
     }
   };
 
-  const handleRedirect = async (noti) => {
+  const handleRedirect = async (noti: NotificationItem) => {
     try {
       // 1. Gọi API đánh dấu đã đọc
       await axios.post(
@@ -129,9 +165,17 @@ function Notification() {
     }
   };
 
-  const groupNotifications = (list) => {
-    const result = [];
-    const map = {};
+  const groupNotifications = (list: (NotificationItem & { club_name?: string })[]) => {
+    const result: NotificationItem[] = [];
+    const map: Record<
+      string,
+      NotificationItem & {
+        users?: User[];
+        ids?: number[];
+        is_read?: number;
+        displayUsers?: User[];
+      }
+    > = {};
 
     list.forEach((n) => {
       const groupTypes = [
@@ -149,15 +193,15 @@ function Notification() {
 
       let key;
       if (n.type === "club_post") {
-        n.displayText = `<strong>${n.from_user.displayName}</strong> đã đăng bài trong <strong>${n.club.name}</strong>`;
-        n.displayUsers = [n.from_user];
+        n.displayText = `<strong>${n.from_user?.displayName}</strong> đã đăng bài trong <strong>${n.club?.name}</strong>`;
+        n.displayUsers = n.from_user ? [n.from_user] : [];
       }
       if (n.type === "club_event") {
         key = `club_event_${n.id}`;
         map[key] = {
           ...n,
           displayUsers: [],
-          displayText: `<strong>${n.club_name}</strong> đã đăng sự kiện "${n.title}"`,
+          displayText: `<strong>${n.club_name ?? n.club?.name}</strong> đã đăng sự kiện "${n.title}"`,
         };
         return;
       }
@@ -169,13 +213,13 @@ function Notification() {
       }
 
       if (n.type === "join_approved") {
-        n.displayText = `Bạn đã được duyệt vào câu lạc bộ <strong>${n.club.name}</strong>`;
+        n.displayText = `Bạn đã được duyệt vào câu lạc bộ <strong>${n.club?.name}</strong>`;
         result.push(n);
         return;
       }
 
       if (n.type === "join_rejected") {
-        n.displayText = `Yêu cầu tham gia câu lạc bộ <strong>${n.club.name}</strong> đã bị từ chối`;
+        n.displayText = `Yêu cầu tham gia câu lạc bộ <strong>${n.club?.name}</strong> đã bị từ chối`;
         result.push(n);
         return;
       }
@@ -183,64 +227,88 @@ function Notification() {
       if (!map[key]) {
         map[key] = {
           ...n,
-          users: [n.from_user],
+          users: n.from_user ? [n.from_user] : [],
           ids: [n.id], // Lưu id của thông báo
           is_read: n.is_read, // trạng thái ban đầu
         };
       } else {
-        if (!map[key].users.some((u) => u.id === n.from_user.id)) {
-          map[key].users.push(n.from_user);
+        const fromUserId = n.from_user?.id;
+        if (fromUserId && !map[key].users?.some((u) => u.id === fromUserId)) {
+          map[key].users = map[key].users || [];
+          map[key].users.push(n.from_user as User);
         }
-        map[key].ids.push(n.id); // Thêm id vào nhóm
+        map[key].ids = [...(map[key].ids || []), n.id]; // Thêm id vào nhóm
         map[key].is_read = map[key].is_read && n.is_read ? 1 : 0; // nhóm đã đọc nếu tất cả đã đọc
       }
     });
 
     Object.values(map).forEach((n) => {
-      const count = n.users.length;
-      const u1 = n.users[0];
+      const usersArr = n.users || [];
+      const count = usersArr.length;
+      const u1 = usersArr[0];
 
       if (n.type === "like") {
         n.displayText =
           count === 1
-            ? `<strong>${u1.displayName}</strong> ${n.title}`
-            : `<strong>${u1.displayName}</strong> và ${count - 1} người khác ${
-                n.title
-              }`;
+            ? `<strong>${u1?.displayName}</strong> ${n.title}`
+            : `<strong>${u1?.displayName}</strong> và ${count - 1} người khác ${n.title}`;
       }
 
       if (n.type === "comment") {
         n.displayText =
           count === 1
-            ? `<strong>${u1.displayName}</strong> ${n.message}`
-            : `<strong>${u1.displayName}</strong> và ${count - 1} người khác  ${
-                n.message
-              }`;
+            ? `<strong>${u1?.displayName}</strong> ${n.message}`
+            : `<strong>${u1?.displayName}</strong> và ${count - 1} người khác  ${n.message}`;
       }
 
       if (n.type === "comment_like") {
         n.displayText =
           count === 1
-            ? `<strong>${u1.displayName}</strong> đã thích bình luận của bạn`
-            : `<strong>${u1.displayName}</strong> và ${
-                count - 1
-              } người khác đã thích bình luận của bạn`;
+            ? `<strong>${u1?.displayName}</strong> đã thích bình luận của bạn`
+            : `<strong>${u1?.displayName}</strong> và ${count - 1} người khác đã thích bình luận của bạn`;
       }
 
-      n.displayUsers = n.users;
+      n.displayUsers = usersArr;
       result.push(n);
     });
-    result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return result;
   };
-  const totalItems = notifications.length;
+  const filteredNotifications = notifications.filter((noti) => {
+    // 1️⃣ Lọc theo trạng thái đọc
+    if (filterRead === "unread" && noti.is_read === 1) {
+      return false;
+    }
+
+    // 2️⃣ Lọc theo loại thông báo
+    if (filterType !== "all") {
+      const mapType = {
+        comment: ["comment", "comment_like", "like"],
+        invite: ["invite", "join_approved", "join_rejected"],
+        event: ["club_event"],
+        other: ["club_post"],
+      };
+
+      if (!mapType[filterType]?.includes(noti.type)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const totalItems = filteredNotifications.length;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
-  const paginatedNotifications = notifications.slice(
+  const paginatedNotifications = filteredNotifications.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+  const filterItemClass = (active: boolean) =>
+    `px-3 py-2 text-sm font-medium rounded-md cursor-pointer
+   transition-colors duration-200
+   ${active ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-100"}`;
 
   return (
     <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 flex-grow">
@@ -250,52 +318,78 @@ function Notification() {
             <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">
               Bộ lọc
             </h2>
+
             <div className="space-y-4">
+              {/* Trạng thái */}
               <div>
                 <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
                   Trạng thái
                 </h3>
+
                 <div className="flex flex-col gap-2">
                   <a
-                    className="px-3 py-2 text-sm font-medium rounded-md bg-primary/10 text-primary dark:bg-primary/20"
-                    href="#"
+                    onClick={() => setFilterRead("all")}
+                    className={filterItemClass(filterRead === "all")}
                   >
                     Tất cả
                   </a>
+
                   <a
-                    className="px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    href="#"
+                    onClick={() => setFilterRead("unread")}
+                    className={filterItemClass(filterRead === "unread")}
                   >
                     Chưa đọc
                   </a>
                 </div>
               </div>
+
+              {/* Loại thông báo */}
               <div>
                 <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
                   Loại thông báo
                 </h3>
+                <a
+                  onClick={() => {
+                    setFilterType("all");
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-2 text-sm font-medium rounded-md cursor-pointer
+    transition-colors duration-200
+    ${
+      filterType === "all"
+        ? "bg-primary/10 text-primary"
+        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+    }
+  `}
+                >
+                  Tất cả
+                </a>
+
                 <div className="flex flex-col gap-2">
                   <a
-                    className="px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    href="#"
+                    onClick={() => setFilterType("comment")}
+                    className={filterItemClass(filterType === "comment")}
                   >
-                    Bình luận &amp; Trả lời
+                    Bình luận & Trả lời
                   </a>
+
                   <a
-                    className="px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    href="#"
+                    onClick={() => setFilterType("invite")}
+                    className={filterItemClass(filterType === "invite")}
                   >
                     Lời mời
                   </a>
+
                   <a
-                    className="px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    href="#"
+                    onClick={() => setFilterType("event")}
+                    className={filterItemClass(filterType === "event")}
                   >
                     Sự kiện
                   </a>
+
                   <a
-                    className="px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    href="#"
+                    onClick={() => setFilterType("other")}
+                    className={filterItemClass(filterType === "other")}
                   >
                     Khác
                   </a>
@@ -304,6 +398,7 @@ function Notification() {
             </div>
           </div>
         </aside>
+
         <div className="w-full lg:w-3/4 xl:w-4/5">
           <header className="mb-6 flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">
@@ -404,7 +499,7 @@ function Notification() {
                       <div className="relative h-12 w-12 shrink-0">
                         <img
                           className="h-12 w-12 rounded-full object-cover"
-                          src={`http://localhost:8000/${noti.club.avatar_url}`}
+                          src={`http://localhost:8000/${noti.club?.avatar_url}`}
                         />
                         <div className="absolute -bottom-1 -right-1 flex items-center justify-center size-6 rounded-full bg-purple-500 text-white border-2">
                           <span className="material-symbols-outlined !text-[14px]">
@@ -447,7 +542,7 @@ function Notification() {
                         <div
                           className="text-sm mt-1"
                           dangerouslySetInnerHTML={{
-                            __html: noti.displayText,
+                            __html: noti.displayText ?? "",
                           }}
                         ></div>
                       )}
@@ -457,9 +552,9 @@ function Notification() {
                           Bạn có một lời mời tham gia câu lạc bộ{" "}
                           <a
                             className="font-bold hover:underline"
-                            href={`/clubs/${noti.club.id}`}
+                            href={`/clubs/${noti.club?.id}`}
                           >
-                            "{noti.club.name}"
+                            "{noti.club?.name}"
                           </a>
                           .
                         </p>
@@ -468,12 +563,18 @@ function Notification() {
                         <div className="flex items-center gap-3">
                           <p className="text-sm text-gray-800 dark:text-gray-200">
                             CLB{" "}
-                            <a
-                              className="font-bold hover:underline"
-                              href={`/clubs/${noti.club.id}`}
-                            >
-                              "{noti.club.name}"
-                            </a>{" "}
+                            {noti.club ? (
+                              <a
+                                className="font-bold hover:underline"
+                                href={`/clubs/${noti.club.id}`}
+                              >
+                                "{noti.club.name}"
+                              </a>
+                            ) : (
+                              <span className="italic text-gray-500">
+                                Không xác định
+                              </span>
+                            )}{" "}
                             đã có thông báo mới
                           </p>
                         </div>

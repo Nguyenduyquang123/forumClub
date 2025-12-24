@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 
 function DetailClub() {
   const { clubId } = useParams();
@@ -8,17 +9,12 @@ function DetailClub() {
   const [club, setClub] = useState(null);
   const [memberCount, setMemberCount] = useState(0);
   const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user")|| "");
+  const user = JSON.parse(localStorage.getItem("user") || "");
 
   useEffect(() => {
-    // Lấy thông tin CLB
     axios
-      .get(`http://localhost:8000/api/clubs/${clubId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
-        setClub(res.data);
-      });
+      .get(`http://localhost:8000/api/public/clubs/${clubId}`)
+      .then((res) => setClub(res.data));
 
     // Lấy số lượng thành viên
     axios
@@ -26,7 +22,7 @@ function DetailClub() {
       .then((res) => {
         setMemberCount(res.data.members_count);
       });
-  }, [clubId]);
+  }, [clubId, token]);
   const handleJoinRequest = async () => {
     try {
       const res = await axios.post(
@@ -37,11 +33,19 @@ function DetailClub() {
       );
 
       console.log("API response:", res.data);
-      alert(res.data.message || "Đã gửi yêu cầu!");
-    } catch (error: any) {
-      if (error.response) {
-        console.error("API Error:", error.response.data);
-        alert(error.response.data.message || "Lỗi máy chủ");
+      toast.success("Đã gửi yêu cầu tham gia câu lạc bộ!");
+    } catch (error: unknown) {
+      if (error instanceof axios.AxiosError) {
+        if (error.response) {
+          console.error("API Error:", error.response.data);
+          toast.error(
+            (error.response.data as { message?: string }).message ||
+              "Lỗi máy chủ"
+          );
+        } else {
+          console.error("Unexpected Error:", error);
+          alert("Không thể gửi yêu cầu!");
+        }
       } else {
         console.error("Unexpected Error:", error);
         alert("Không thể gửi yêu cầu!");

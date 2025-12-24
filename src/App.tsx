@@ -5,6 +5,9 @@ import DefaultLayout from "./components/layout/DefaultLayout";
 import { Fragment } from "react/jsx-runtime";
 import DefaultLayoutClub from "./components/layout/DefaultLayoutClub";
 
+import FloatingChat from "./components/FloatingChat";
+import { ToastContainer } from "react-toastify";
+
 function App() {
   return (
     <Router>
@@ -34,6 +37,14 @@ function App() {
             );
           })}
         </Routes>
+        <FloatingChat />
+        <ToastContainer
+          position="bottom-right"
+          autoClose={3000}
+          hideProgressBar
+          closeButton={false}
+          theme="colored"
+        />
       </div>
     </Router>
   );

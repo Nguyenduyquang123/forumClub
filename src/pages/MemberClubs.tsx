@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import TimeAgo from "timeago-react";
 import "../utils/viLocale";
+import { toast } from "react-toastify";
 
 const ROLE_LABEL = {
   owner: "Chủ tịch",
@@ -20,6 +21,7 @@ function MemberClubs() {
   const [updateFlag, setUpdateFlag] = useState(false);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [customRole, setCustomRole] = useState("");
 
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("");
@@ -75,6 +77,7 @@ function MemberClubs() {
           );
           setMemberData(res.data.data);
           setSelectedRole(res.data.data.role);
+          console.log("member data:", res.data.data);
         } catch (err) {
           console.error("Lỗi khi tải chi tiết thành viên:", err);
           setMemberData(null);
@@ -92,6 +95,7 @@ function MemberClubs() {
         }
       );
       alert("Cập nhật chức vụ thành công");
+      toast.success("Cập nhật thành công!");
       setIsOpen(false);
       setUpdateFlag(true);
     } catch (err) {
@@ -217,6 +221,22 @@ function MemberClubs() {
 
     return matchSearch && matchRole;
   });
+  const canEditMember = (member) => {
+    // Owner: sửa tất cả
+    if (userRole.role === "owner") return true;
+
+    // Admin: không sửa chính mình, không sửa owner
+    if (
+      userRole.role === "admin" &&
+      user.id !== member.user?.id &&
+      member.role !== "owner"
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
@@ -407,7 +427,7 @@ function MemberClubs() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
-                      {ROLE_LABEL[member?.role] || "Thành viên"}
+                      {ROLE_LABEL[member.role] || member.role}
                     </span>
                   </td>
 
@@ -425,28 +445,26 @@ function MemberClubs() {
                       ) : (
                         " "
                       )}
-                      {userRole.role === "owner" ||
-                      userRole.role === "admin" ? (
+                      {canEditMember(member) && (
                         <>
-                          <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-[#617589] dark:text-gray-400">
-                            <span
-                              className="material-symbols-outlined text-xl"
-                              onClick={() => handleEditClick(member.id)}
-                            >
+                          <button
+                            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-[#617589] dark:text-gray-400"
+                            onClick={() => handleEditClick(member.id)}
+                          >
+                            <span className="material-symbols-outlined text-xl">
                               edit
                             </span>
                           </button>
-                          <button className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400">
-                            <span
-                              className="material-symbols-outlined text-xl"
-                              onClick={() => handleDelete(member.user.id)}
-                            >
+
+                          <button
+                            className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400"
+                            onClick={() => handleDelete(member.user.id)}
+                          >
+                            <span className="material-symbols-outlined text-xl">
                               delete
                             </span>
                           </button>
                         </>
-                      ) : (
-                        ""
                       )}
                     </div>
                   </td>
@@ -515,24 +533,26 @@ function MemberClubs() {
                   Chọn một chức vụ
                 </h3>
                 <div className="flex flex-col gap-3">
-                  <label className="flex items-center gap-4 rounded-lg border border-solid border-[#dbe0e6] dark:border-gray-600 p-[15px] hover:border-primary/50 dark:hover:border-primary/70 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5 dark:has-[:checked]:border-primary dark:has-[:checked]:bg-primary/10">
-                    <input
-                      type="radio"
-                      name="role_selection_radio"
-                      value="owner"
-                      checked={selectedRole === "owner"}
-                      onChange={(e) => setSelectedRole(e.target.value)}
-                      className="h-5 w-5 border-2 border-[#dbe0e6] ..."
-                    />
-                    <div className="flex grow flex-col">
-                      <p className="text-[#111418] dark:text-gray-100 text-sm font-medium leading-normal">
-                        chủ tịch
-                      </p>
-                      <p className="text-[#617589] dark:text-gray-400 text-sm font-normal leading-normal">
-                        Có quyền xóa câu lạc bộ.
-                      </p>
-                    </div>
-                  </label>
+                  {userRole.role === "owner" && (
+                    <label className="flex items-center gap-4 rounded-lg border border-solid border-[#dbe0e6] dark:border-gray-600 p-[15px] hover:border-primary/50 dark:hover:border-primary/70 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5 dark:has-[:checked]:border-primary dark:has-[:checked]:bg-primary/10">
+                      <input
+                        type="radio"
+                        name="role_selection_radio"
+                        value="owner"
+                        checked={selectedRole === "owner"}
+                        onChange={(e) => setSelectedRole(e.target.value)}
+                        className="h-5 w-5 border-2 border-[#dbe0e6] ..."
+                      />
+                      <div className="flex grow flex-col">
+                        <p className="text-[#111418] dark:text-gray-100 text-sm font-medium leading-normal">
+                          chủ tịch
+                        </p>
+                        <p className="text-[#617589] dark:text-gray-400 text-sm font-normal leading-normal">
+                          Có quyền xóa câu lạc bộ.
+                        </p>
+                      </div>
+                    </label>
+                  )}
                   <label className="flex items-center gap-4 rounded-lg border border-solid border-[#dbe0e6] dark:border-gray-600 p-[15px] hover:border-primary/50 dark:hover:border-primary/70 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5 dark:has-[:checked]:border-primary dark:has-[:checked]:bg-primary/10">
                     <input
                       type="radio"
@@ -573,23 +593,29 @@ function MemberClubs() {
               </div>
 
               {/* Custom role */}
-              {memberData.role === "owner" ? (
+              {userRole.role === "owner" && (
                 <div>
                   <p className="text-sm dark:text-white mb-2">
-                    Thêm chức vụ mới (chỉ dành cho người tạo CLB)
+                    Thêm chức vụ mới
                   </p>
-                  <div className="flex">
+                  <div className="flex gap-2">
                     <input
-                      className="border p-3 rounded-l-lg w-full"
-                      placeholder="Nhập tên chức vụ..."
+                      value={customRole}
+                      onChange={(e) => setCustomRole(e.target.value)}
+                      className="border p-3 rounded-lg w-full"
+                      placeholder="Ví dụ: Phó chủ nhiệm, Thủ quỹ..."
                     />
-                    <button className="bg-gray-100 p-3 rounded-r-lg">
-                      <span className="material-symbols-outlined">add</span>
+                    <button
+                      onClick={() => {
+                        if (!customRole.trim()) return;
+                        setSelectedRole(customRole.trim());
+                      }}
+                      className="bg-primary text-white px-4 rounded-lg"
+                    >
+                      Dùng
                     </button>
                   </div>
                 </div>
-              ) : (
-                ""
               )}
             </div>
 

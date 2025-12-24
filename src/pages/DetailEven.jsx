@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const formatDateTime = (str) => {
   const d = new Date(str);
@@ -312,7 +313,8 @@ const isFull =
                               {m.user.displayName}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                               {ROLE_LABEL[m.role] || "Thành viên"}
+                              
+                               {ROLE_LABEL[m.role] || m.role}
                             </p>
                           </div>
                         </div>

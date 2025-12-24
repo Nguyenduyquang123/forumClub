@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { toast } from "react-toastify";
 
 function EditProfile() {
   const [user, setUser] = useState<any>(null);
@@ -76,7 +77,7 @@ function EditProfile() {
         }
       );
 
-      alert("Cập nhật ảnh thành công!");
+      toast.success("Ảnh đại diện đã được cập nhật!");
 
       // Cập nhật state user với URL avatar mới từ response
       setUser((prev: any) => ({ ...prev, avatarUrl: res.data.avatar }));
@@ -124,9 +125,11 @@ function EditProfile() {
         }
       );
       setUser?.(res.data.user); // cập nhật lại state global
+      toast.success("cập nhật thông tin thành công!");
     } catch (err) {
       console.error(err);
       alert("Lỗi khi cập nhật thông tin!");
+      toast.error("Lỗi khi cập nhật thông tin!");
     }
   };
   const handleSubmitPassword = async (e) => {
@@ -138,11 +141,12 @@ function EditProfile() {
       const userId = user?.id;
 
       if (!userId) {
-        alert("Không tìm thấy ID người dùng!");
+        toast.error("Không tìm thấy ID người dùng!");
         return;
       }
       if (newPassWord !== confirmNewPassword) {
-        alert("Mật khẩu mới và xác nhận mật khẩu không trùng khớp!");
+        toast.error("Mật khẩu mới và xác nhận mật khẩu không trùng khớp!");
+        
         return;
       }
 
@@ -154,10 +158,11 @@ function EditProfile() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      alert("cập nhật thông tin thành công!");
+     
+        toast.success("cập nhật thông tin thành công!");
     } catch (err) {
       console.error(err);
-      alert("Lỗi khi cập nhật thông tin!");
+      toast.error("Lỗi khi cập nhật thông tin!");
     }
   };
 

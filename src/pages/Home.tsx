@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 
 import { useState } from "react";
 import axios from "axios";
+import { toast } from "react-toastify";
 function Home() {
   const [inviteCode, setInviteCode] = useState("");
   const [message, setMessage] = useState("");
@@ -15,6 +16,7 @@ function Home() {
         invite_code: inviteCode,
         user_id: userId,
       });
+      toast.success("Tham gia câu lạc bộ thành công!");
       setMessage(res.data.message);
     } catch (err) {
       setMessage(err.response?.data?.message || "Có lỗi xảy ra");
