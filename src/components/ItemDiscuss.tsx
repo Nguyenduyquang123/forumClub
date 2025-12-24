@@ -1,12 +1,41 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Link, useParams } from "react-router-dom";
-import timeAgo from "./timeAgo";
+
+import TimeAgo from "timeago-react";
+import { set } from "date-fns";
+
+interface User {
+  id: number;
+  username: string;
+  avatarUrl?: string;
+}
+
+interface Comment {
+  id: number;
+}
+
+interface Post {
+  id: number;
+  title: string;
+  is_pinned: number; // 0 | 1
+  updated_at: string;
+  created_at: string;
+  notify_members?: number;
+  creator?: User;
+  comments: Comment[];
+  likes_count: number;
+}
+
+interface ItemDiscussProps {
+  excludePinned?: boolean;
+}
 
 const ItemDiscuss = ({ excludePinned = false }) => {
-  const { id: clubId } = useParams(); // Lấy clubId từ URL
-  const [posts, setPosts] = useState([]);
-  const [openMenuId, setOpenMenuId] = useState(null);
+    const { id: clubId } = useParams<{ id: string }>();
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [myRole, setMyRole] = useState<"owner" | "admin" | "member" | null>(null);
   const user = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
@@ -16,12 +45,31 @@ const ItemDiscuss = ({ excludePinned = false }) => {
           `http://localhost:8000/api/clubs/${clubId}/posts`
         );
         setPosts(res.data.posts);
+         
       } catch (err) {
         console.error("Lỗi khi lấy danh sách bài đăng:", err);
       }
     };
     fetchPosts();
   }, [clubId]);
+    useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:8000/api/clubs/${clubId}/my-role`,
+          {
+            params: { user_id: user.id },
+          }
+        );
+        setMyRole(res.data.role);
+        console.log("Vai trò của tôi trong CLB:", res.data.role);
+      } catch (err) {
+        console.error("Lỗi khi lấy vai trò thành viên:", err);
+      }
+    };
+
+    fetchRole();
+  }, [clubId, user.id]);
   const postsFiltered = posts
     .filter((post) => !excludePinned || !post.is_pinned)
     .sort((a, b) => {
@@ -32,25 +80,63 @@ const ItemDiscuss = ({ excludePinned = false }) => {
         new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       );
     });
-  // Nếu excludePinned === true → chỉ lấy 2 bài
-  const postsToShow = excludePinned ? postsFiltered.slice(0, 2) : postsFiltered;
+  // Nếu excludePinned === true → chỉ lấy 6 bài
+  const postsToShow = excludePinned ? postsFiltered.slice(0, 3) : postsFiltered;
   const handleDelete = async (postId) => {
-  if (!window.confirm("Bạn có chắc muốn xóa bài này không?")) return;
+    if (!window.confirm("Bạn có chắc muốn xóa bài này không?")) return;
 
-  try {
-    await axios.delete(`http://localhost:8000/api/posts/${postId}`, {
-      data: { auth_user_id: user.id },  // hoặc token tùy backend bạn
-    });
+    try {
+      await axios.delete(`http://localhost:8000/api/posts/${postId}`, {
+        data: { auth_user_id: user.id }, // hoặc token tùy backend bạn
+      });
 
-    // Xóa khỏi UI
-    setPosts((prev) => prev.filter((p) => p.id !== postId));
+      // Xóa khỏi UI
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
 
-    setOpenMenuId(null);
-  } catch (err) {
-    console.error("Lỗi khi xóa bài:", err);
-  }
-}
-console.log("Rendered posts:", postsToShow);
+      setOpenMenuId(null);
+    } catch (err) {
+      console.error("Lỗi khi xóa bài:", err);
+    }
+  };
+  const togglePin = async (postId) => {
+    try {
+      const post = posts.find((p) => p.id === postId);
+      if (!post) return;
+
+      const url = post.is_pinned
+        ? `http://localhost:8000/api/posts/${postId}/unpin`
+        : `http://localhost:8000/api/posts/${postId}/pin`;
+
+      await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      const updatedPosts = posts.map((p) =>
+        p.id === postId ? { ...p, is_pinned: post.is_pinned ? 0 : 1 } : p
+      );
+      setPosts(updatedPosts);
+    } catch (err) {
+      console.error(err);
+      alert("Lỗi, không thể thực hiện thao tác");
+    }
+  };
+
+  const unpinPost = async (postId) => {
+    try {
+      const res = await axios.patch(
+        `http://localhost:8000/api/posts/${postId}/unpin`
+      );
+
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, is_pinned: false } : p))
+      );
+    } catch (err) {
+      alert(err.response?.data?.error || "Không thể bỏ ghim bài");
+    }
+  };
+
   return (
     <>
       {postsToShow
@@ -84,7 +170,7 @@ console.log("Rendered posts:", postsToShow);
                     </h3>
                   </div>
                 </div>
-              
+
                 <div className="relative">
                   <span
                     onClick={(e) => {
@@ -97,9 +183,34 @@ console.log("Rendered posts:", postsToShow);
                   </span>
 
                   {/* Menu */}
-               
+
                   {openMenuId === post.id && (
                     <div className="absolute right-0 mt-2 w-32 rounded-lg bg-white shadow-lg border p-2 z-10">
+                      {(myRole === "owner" || myRole === "admin") && (post.is_pinned ? (
+                        
+                        <button
+                          className="w-full text-left px-3 py-1.5 text-red-600 hover:bg-red-50 rounded"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation(); // tránh click ảnh hưởng tới parent
+                            unpinPost(post.id);
+                          }}
+                        >
+                          Bỏ ghim bài
+                        </button>
+                      ) : (
+                        <button
+                          className="w-full text-left px-3 py-1.5 text-red-600 hover:bg-red-50 rounded"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation(); // tránh click ảnh hưởng tới parent
+                            togglePin(post.id);
+                          }}
+                        >
+                          Ghim bài
+                        </button>
+                      ))}
+
                       <button
                         className="w-full text-left px-3 py-1.5 text-red-600 hover:bg-red-50 rounded"
                         onClick={(e) => {
@@ -111,9 +222,7 @@ console.log("Rendered posts:", postsToShow);
                       </button>
                     </div>
                   )}
-                  
                 </div>
-              
               </div>
 
               {/* --- Footer --- */}
@@ -150,7 +259,9 @@ console.log("Rendered posts:", postsToShow);
                   <span className="material-symbols-outlined !text-base">
                     schedule
                   </span>
-                  <span>{timeAgo(post.updated_at)}</span>
+                  <span>
+                    <TimeAgo datetime={post.created_at} locale="vi" />
+                  </span>
                 </div>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import CategoryList from "../CategoryList";
 import { Button } from "../ui/button";
 import avatar from "../../assets/images/avata.jpg";
@@ -11,8 +11,12 @@ const Header = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isOpenmenu, setIsOpenmenu] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(); // Số lượng thông báo chưa đọc giả định
+  const [inviteCount, setInviteCount] = useState(0);
+  const [hasEventToday, setHasEventToday] = useState(false);
   const handleMouseEnter = () => setIsOpen(true);
   const handleMouseLeave = () => setIsOpen(false);
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -45,12 +49,52 @@ const Header = () => {
     fetchUserProfile();
   }, []);
 
-  // 1. Dùng useState để theo dõi trạng thái hiển thị của dropdown
+  const fetchReadCount = async () => {
+    const res = await axios.get(
+      `http://localhost:8000/api/notifications/read-count/${user.id}`
+    );
+    setUnreadCount(res.data.read_count);
+  };
+  const fetchInvites = async () => {
+    try {
+      const res = await axios.get(
+        "http://localhost:8000/api/clubs/invites/pending",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setInviteCount(res.data.length);
+    } catch (err) {
+      console.error("Lỗi khi tải lời mời:", err);
+    }
+  };
 
-  // 2. Hàm xử lý khi click vào nút chuông
+    const fetchTodayEvents = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:8000/api/calendar/today/${user.id}`
+        );
+        setHasEventToday(res.data.length > 0);
+      } catch (err) {
+        console.error("Lỗi lấy sự kiện hôm nay:", err);
+      }
+    };
+
+
+  useEffect(() => {
+    if (user) {
+      fetchReadCount();
+      fetchInvites();
+      fetchTodayEvents();
+    }
+  }, [user]);
+
   const toggleDropdown = () => {
     setIsOpenmenu(!isOpenmenu);
   };
+  const totalNotifications = (unreadCount || 0) + (inviteCount || 0);
 
   if (loading) return <nav className="p-4">Loading...</nav>;
 
@@ -83,20 +127,6 @@ const Header = () => {
           </nav>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
-          <label className="hidden md:flex flex-col min-w-40 !h-10 max-w-64">
-            <div className="flex w-full flex-1 items-stretch rounded-lg h-full">
-              <div className="text-slate-500 dark:text-slate-400 flex bg-slate-100 dark:bg-slate-800 items-center justify-center pl-3 rounded-l-lg border-r-0">
-                <span className="material-symbols-outlined text-xl">
-                  search
-                </span>
-              </div>
-              <input
-                className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-slate-100 focus:outline-0 focus:ring-0 border-none bg-slate-100 dark:bg-slate-800 focus:border-none h-full placeholder:text-slate-500 dark:placeholder:text-slate-400 px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal"
-                placeholder="Tìm kiếm..."
-                value=""
-              />
-            </div>
-          </label>
           <button className="md:hidden flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-transparent text-slate-800 dark:text-slate-200 gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
             <span className="material-symbols-outlined text-xl">search</span>
           </button>
@@ -117,19 +147,34 @@ const Header = () => {
             <div className="flex flex-1 justify-end gap-2 sm:gap-4">
               <div className="inline-block text-left">
                 {/* --- BUTTON CHUÔNG (TRIGGER) --- */}
-                <Button
-                  className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                  // Gắn sự kiện click
-                  onClick={toggleDropdown}
-                >
-                  <span className="material-symbols-outlined text-xl">
-                    notifications
-                  </span>
-                </Button>
+                <NavLink to="/notification" className="relative">
+                  <Button
+                    className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                    // Gắn sự kiện click
+                    onClick={toggleDropdown}
+                  >
+                    <span className="material-symbols-outlined text-xl">
+                      notifications
+                    </span>
+                  </Button>
+                  {totalNotifications > 0 && (
+                    <span
+                      className="
+        absolute -top-1 -right-1 
+        bg-red-500 text-white text-xs font-bold 
+        h-5 min-w-5 px-1 
+        flex items-center justify-center 
+        rounded-full
+      "
+                    >
+                      {totalNotifications}
+                    </span>
+                  )}
+                </NavLink>
 
                 {/* --- DROPDOWN THÔNG BÁO --- */}
                 {/* 4. Điều kiện hiển thị: Chỉ hiển thị khi isOpen là true */}
-                {isOpenmenu && (
+                {/* {isOpenmenu && (
                   <div className="absolute top-15 right-4 sm:right-8 mt-2 w-full max-w-sm origin-top-right rounded-xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
                     <div className="flex flex-col">
                       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
@@ -250,13 +295,25 @@ const Header = () => {
                       </div>
                     </div>
                   </div>
-                )}
+                )} */}
               </div>
               <Button className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                 <span className="material-symbols-outlined text-xl">
                   chat_bubble
                 </span>
               </Button>
+              <Link to="/my-calendar" className="relative">
+                <Button className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                  <span className="material-symbols-outlined text-xl">
+                    calendar_month
+                  </span>
+                </Button>
+                {/* Chấm đỏ nếu có sự kiện hôm nay */}
+                {hasEventToday && (
+                  <span className="absolute top-0 right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                )}
+              </Link>
+
               <Link to="/userClubs">
                 <Button variant="outline">Quản lý CLB</Button>
               </Link>

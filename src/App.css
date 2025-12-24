@@ -128,3 +128,83 @@
 .material-symbols-outlined {
   font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
 }
+/* --- Modern Tailwind Calendar Styling --- */
+
+.rbc-tailwind {
+  font-family: Inter, sans-serif;
+  color: #111;
+}
+
+.dark .rbc-tailwind {
+  color: #e5e5e5;
+}
+
+/* Header tháng */
+.rbc-toolbar {
+  @apply flex items-center justify-between mb-4;
+}
+
+.rbc-toolbar-label {
+  @apply text-xl font-semibold text-gray-900 dark:text-gray-100;
+}
+
+/* Buttons */
+.rbc-btn-group button {
+  @apply px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-700 
+         bg-white dark:bg-neutral-800
+         text-gray-700 dark:text-gray-200
+         hover:bg-gray-100 hover:dark:bg-neutral-700
+         transition-all duration-150;
+}
+
+/* Selected button */
+.rbc-btn-group button.rbc-active {
+  @apply bg-blue-500 text-white font-semibold border-blue-500;
+}
+
+/* Grid */
+.rbc-month-view {
+  @apply border border-gray-200 dark:border-neutral-700 rounded-xl overflow-hidden shadow-sm;
+}
+
+.rbc-header {
+  @apply py-3 text-center font-semibold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-neutral-800;
+}
+
+/* Ô ngày */
+.rbc-date-cell {
+  @apply p-1 text-sm text-gray-500 dark:text-gray-400 font-medium;
+}
+
+.rbc-off-range-bg {
+  @apply bg-gray-100 dark:bg-neutral-900;
+}
+
+/* Hover cell */
+.rbc-day-bg:hover {
+  @apply bg-blue-50 dark:bg-neutral-700 transition-colors;
+}
+
+/* Sự kiện */
+.rbc-event {
+  @apply bg-blue-600 border-blue-700 text-white font-medium rounded-lg px-2 py-[2px] shadow-md;
+}
+
+/* Agenda view */
+.rbc-agenda-view table {
+  @apply border border-gray-200 dark:border-neutral-700 rounded-lg overflow-hidden;
+}
+
+.rbc-agenda-date-cell,
+.rbc-agenda-time-cell {
+  @apply font-semibold;
+}
+
+.rbc-agenda-event-cell {
+  @apply text-gray-900 dark:text-gray-100;
+}
+
+/* Today highlight */
+.rbc-today {
+  @apply bg-blue-100 dark:bg-blue-900/40;
+}

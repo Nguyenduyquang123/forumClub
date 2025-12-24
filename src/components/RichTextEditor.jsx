@@ -5,6 +5,7 @@ import Link from "@tiptap/extension-link";
 import { debounce } from "lodash";
 
 export default function RichTextEditor({ content, setContent }) {
+  
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -48,6 +49,14 @@ export default function RichTextEditor({ content, setContent }) {
 
     editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   };
+useEffect(() => {
+  if (!editor) return;
+
+  if (content && content !== editor.getHTML()) {
+    editor.commands.setContent(content, false); // 🔥 quan trọng
+  }
+}, [content]);
+
 
   return (
     <div className="flex flex-col w-full">

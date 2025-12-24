@@ -1,8 +1,8 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import timeAgo from "../components/timeAgo";
-
+import { toast } from "react-toastify";
+import TimeAgo from "timeago-react";
 const colors = [
   { bg: "bg-red-100 dark:bg-red-900/50", text: "text-red-600 dark:text-red-400", border: "border-red-500/50 dark:border-red-500/30" },
   { bg: "bg-blue-100 dark:bg-blue-900/50", text: "text-blue-600 dark:text-blue-400", border: "border-blue-500/50 dark:border-blue-500/30" },
@@ -19,6 +19,10 @@ function ClubNotification() {
   const [club, setClub] = useState(null);
   const [posts, setPosts] = useState([]);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const POSTS_PER_PAGE = 5;
 
   const user = JSON.parse(localStorage.getItem("user")) || {};
 const token = localStorage.getItem("token") || "";
@@ -51,15 +55,27 @@ const token = localStorage.getItem("token") || "";
       setPosts((prev) => prev.filter((p) => p.id !== postId));
     } catch (err) {
       alert("Không thể xóa bài!");
+      toast.error("Xóa bài thất bại!");
       console.error(err);
     }
   };
+  const filteredPosts = posts
+    .filter((post) => post.notify_members !== 0)
+    .filter((post) =>
+      post.content?.toLowerCase().includes(search.toLowerCase())
+    );
+  const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE);
+
+  const paginatedPosts = filteredPosts.slice(
+    (currentPage - 1) * POSTS_PER_PAGE,
+    currentPage * POSTS_PER_PAGE
+  );
 
 
 
   return (
     <>
-      {/* Breadcrumb */}
+     
       <div className="flex flex-wrap gap-2 px-1 pb-4">
         <a className="text-gray-500 dark:text-gray-400 hover:text-primary text-sm font-medium" href="#">
           Trang chủ
@@ -68,7 +84,7 @@ const token = localStorage.getItem("token") || "";
         <span className="text-[#111418] dark:text-gray-200 text-sm font-medium">Thông báo chung</span>
       </div>
 
-      {/* Header */}
+     
       <div className="md:col-span-9">
         <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
           <h1 className="text-gray-900 dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">
@@ -76,11 +92,22 @@ const token = localStorage.getItem("token") || "";
           </h1>
         </div>
 
-        {/* Posts */}
+       
         <div className="space-y-6">
-          {posts
-            .filter((post) => post.notify_members !== 0)
-            .map((post) => {
+          <div className="mb-6 max-w-md">
+            <input
+              type="text"
+              placeholder="Tìm kiếm thông báo..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 px-4 py-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none dark:bg-gray-800 dark:text-white"
+            />
+          </div>
+
+          {paginatedPosts.map((post) => {
               const color = getColorForPost(post.id);
              const currentUserMember = club?.members.find(m => m.id === user.id);
 
@@ -127,15 +154,52 @@ const token = localStorage.getItem("token") || "";
                       />
 
                       <p className="text-gray-500 dark:text-gray-500 text-sm font-normal">
-                        Đăng bởi {post.creator?.displayName || "Ẩn danh"} | {timeAgo(post.created_at)}
+                        Đăng bởi {post.creator?.displayName || "Ẩn danh"} | <TimeAgo datetime={post.created_at} locale="vi" />
                       </p>
                     </div>
                   </div>
                 </div>
               );
             })}
+
         </div>
+
+
+  <div className="mt-8 flex items-center justify-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+    <button
+      disabled={currentPage === 1}
+      onClick={() => setCurrentPage((p) => p - 1)}
+      className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
+    >
+      <span className="material-symbols-outlined">chevron_left</span>
+    </button>
+
+    {Array.from({ length: totalPages }).map((_, i) => (
+      <button
+        key={i}
+        onClick={() => setCurrentPage(i + 1)}
+        className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+          currentPage === i + 1
+            ? "bg-primary text-white"
+            : "hover:bg-slate-100 dark:hover:bg-slate-800"
+        }`}
+      >
+        {i + 1}
+      </button>
+    ))}
+
+    <button
+      disabled={currentPage === totalPages}
+      onClick={() => setCurrentPage((p) => p + 1)}
+      className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
+    >
+      <span className="material-symbols-outlined">chevron_right</span>
+    </button>
+  </div>
+
+
       </div>
+
     </>
   );
 }

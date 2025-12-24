@@ -1,7 +1,19 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 
+const formatDateTime = (str) => {
+  const d = new Date(str);
+  return d.toLocaleString("vi-VN", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 
 function DetailEven() {
@@ -10,8 +22,14 @@ function DetailEven() {
   const [activeTab, setActiveTab] = useState("description");
   const [members, setMembers] = useState([]);
   const [joined, setJoined] = useState(false);
+  const [added, setAdded] = useState(false);
   const userlocal = JSON.parse(localStorage.getItem("user") || "{}");
 
+ const ROLE_LABEL = {
+  owner: "Chủ tịch",
+  admin: "Quản lý",
+  member: "Thành viên",
+};
   const fetchParticipants = async () => {
     try {
       const res = await axios.get(
@@ -28,15 +46,15 @@ function DetailEven() {
     fetchParticipants();
   }, [eventId]);
 
-  // Toggle tham gia / hủy
+  
   const handleToggleJoin = async () => {
     try {
       const res = await axios.post(
         `http://localhost:8000/api/events/${eventId}/toggle-join`,
-        { user_id: userlocal.id } // gửi userId
+        { user_id: userlocal.id } 
       );
       setJoined(res.data.joined);
-      fetchParticipants(); // refresh danh sách người tham gia
+      fetchParticipants(); 
     } catch (err) {
       console.error("Lỗi khi thay đổi trạng thái tham gia:", err);
     }
@@ -45,9 +63,60 @@ function DetailEven() {
   useEffect(() => {
     axios
       .get(`http://localhost:8000/api/events/${eventId}`)
-      .then((res) => setEvent(res.data))
+      .then((res) => {
+        const data = res.data;
+
+        // Format lại thời gian
+        const formatted = {
+          ...data,
+          start_time: data.start_time.replace(" ", "T"),
+          end_time: data.end_time.replace(" ", "T"),
+        };
+        setEvent(formatted);
+      })
       .catch((err) => console.error("Lỗi khi tải chi tiết sự kiện:", err));
   }, [eventId]);
+
+useEffect(() => {
+  if (!event) return; 
+  const checkAdded = async () => {
+    try {
+      const res = await axios.get(`http://localhost:8000/api/calendar/${userlocal.id}`);
+      const addedEvent = res.data.find(e => e.event_id === event.id);
+      setAdded(!!addedEvent);
+    } catch (err) {
+      console.error("Lỗi khi kiểm tra lịch:", err);
+    }
+  };
+  checkAdded();
+}, [event, userlocal.id]);
+
+const handleToggleCalendar = async () => {
+  try {
+    setAdded(!added);
+
+    if (added) {
+      await axios.delete(`http://localhost:8000/api/calendar/${userlocal.id}/${event.id}`);
+    } else {
+      await axios.post(`http://localhost:8000/api/calendar/add`, {
+        user_id: userlocal.id,
+        event_id: event.id,
+        club_id: event.club_id,
+        title: event.title,
+        start: event.start_time,
+        end: event.end_time
+      });
+    }
+  } catch (err) {
+    console.error("Lỗi khi thay đổi trạng thái lịch:", err);
+    alert("Có lỗi xảy ra. Vui lòng thử lại!");
+    setAdded(added);
+  }
+};
+
+const isFull =
+  event?.max_participants &&
+  members.length >= event.max_participants;
 
   if (!event)
     return <p className="text-center mt-10">⏳ Đang tải chi tiết sự kiện...</p>;
@@ -95,7 +164,7 @@ function DetailEven() {
                     </span>
                   </div>
                   <p className="text-gray-800 dark:text-gray-200 text-base flex-1">
-                    {event.start_time || "Chưa cập nhật thời gian"}
+                   <p>{formatDateTime(event.start_time)}</p>
                   </p>
                 </div>
                 <div className="flex items-center gap-4 min-h-14">
@@ -108,6 +177,17 @@ function DetailEven() {
                     {event.location || "Chưa cập nhật địa điểm"}
                   </p>
                 </div>
+            <div className="flex items-center gap-4 min-h-14">
+  <div className="text-gray-800 dark:text-gray-200 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 shrink-0 size-10">
+    <span className="material-symbols-outlined">group</span>
+  </div>
+  <p className="text-gray-800 dark:text-gray-200 text-base flex-1">
+    {members.length}
+    {event.max_participants
+      ? ` / ${event.max_participants} người tham gia`
+      : " người tham gia"}
+  </p>
+</div>
               </div>
             </div>
 
@@ -116,19 +196,36 @@ function DetailEven() {
                 <div className="flex w-full flex-col items-stretch gap-3 px-4 py-3 md:flex-row">
                   <div>
                     <button
-                      className={`h-12 w-110 font-bold rounded-lg ${
-                        joined
-                          ? "bg-red-500 text-white"
-                          : "bg-primary text-white"
-                      }`}
-                      onClick={handleToggleJoin}
-                    >
-                      {joined ? "Hủy tham gia" : "Tham gia"}
-                    </button>
+  disabled={!joined && isFull}
+  className={`h-12 w-110 font-bold rounded-lg transition
+    ${
+      joined
+        ? "bg-red-500 text-white"
+        : isFull
+        ? "bg-gray-400 text-white cursor-not-allowed"
+        : "bg-primary text-white hover:bg-primary/90"
+    }`}
+  onClick={handleToggleJoin}
+>
+  {joined
+    ? "Hủy tham gia"
+    : isFull
+    ? "Đã đủ số lượng"
+    : "Tham gia"}
+</button>
+
                   </div>
-                  <button className="flex-1 h-12 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white font-bold rounded-lg">
-                    Thêm vào lịch
-                  </button>
+<button
+  onClick={handleToggleCalendar}
+  className={`flex-1 h-12 font-semibold rounded-lg shadow transition-colors duration-200 ${
+    added
+      ? "bg-red-500 text-white hover:bg-gray-400 cursor-pointer" // trạng thái đã thêm
+      : "bg-blue-600 text-white hover:bg-blue-700" // trạng thái chưa thêm
+  }`}
+>
+  {added ? "Hủy thêm vào lịch" : "Thêm vào lịch"}
+</button>
+
                 </div>
               </div>
             ) : null}
@@ -184,21 +281,18 @@ function DetailEven() {
                       <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                         {members.length} người tham gia
                       </h3>
-                      <div className="relative w-full sm:max-w-xs rounded-lg border-gray-300 border-2 border-solid ">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 b">
-                          <span
-                            className="material-symbols-outlined text-gray-500 dark:text-gray-400"
-                            //     style="font-size: 20px;"
-                          >
-                            search
-                          </span>
-                        </div>
-                        <input
-                          className="block w-full rounded-lg border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white pl-10 h-10 text-sm"
-                          placeholder="Tìm kiếm người tham gia..."
-                          type="text"
-                        />
-                      </div>
+                     <div className="flex gap-1 ">
+                
+                      <Link to="list-member">
+                       <button
+                          //onClick={handleExport}
+                          className="h-10 px-4 bg-primary text-white rounded-lg font-bold hover:bg-primary/90"
+                        >
+                          Xem danh sách
+                        </button>
+                      </Link>
+                     </div>
+                      
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                       {members.map((m) => (
@@ -219,7 +313,8 @@ function DetailEven() {
                               {m.user.displayName}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {m.role}
+                              
+                               {ROLE_LABEL[m.role] || m.role}
                             </p>
                           </div>
                         </div>

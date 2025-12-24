@@ -1,16 +1,17 @@
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import timeAgo from "../components/timeAgo";
 import Pusher from "pusher-js";
 import TimeAgo from "timeago-react";
 import "../utils/viLocale";
 
 function DetailPost() {
+  const { id: clubId } = useParams();
   const { postId } = useParams<{ postId: string }>();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [myRole, setMyRole] = useState(null);
   const [comments, setComments] = useState([]);
   const [content, setContent] = useState("");
   const [liked, setLiked] = useState(false);
@@ -20,13 +21,18 @@ function DetailPost() {
   const user = JSON.parse(localStorage.getItem("user"));
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [initialScrollDone, setInitialScrollDone] = useState(false);
 
   useEffect(() => {
-    containerRef.current?.scrollTo({
-      top: containerRef.current.scrollHeight,
-      behavior: "auto", // hoặc "smooth"
-    });
-  }, [comments]);
+    if (!initialScrollDone && comments.length > 0) {
+      containerRef.current?.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior: "auto",
+      });
+      setInitialScrollDone(true);
+    }
+  }, [comments, initialScrollDone]);
+
   const scrollToBottom = () => {
     commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -159,6 +165,36 @@ function DetailPost() {
       console.error("Lỗi khi like/unlike:", err);
     }
   };
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:8000/api/clubs/${clubId}/my-role`,
+          { params: { user_id: user.id } }
+        );
+        setMyRole(res.data.role);
+      } catch (err) {
+        console.error("Lỗi khi lấy vai trò thành viên:", err);
+      }
+    };
+    fetchRole();
+  }, [clubId, user.id]);
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm("Bạn có chắc muốn xóa bình luận này không?")) return;
+
+    try {
+      await axios.delete(`http://localhost:8000/api/comments/${commentId}`, {
+        data: { user_id: user.id }, // Lumen cần "data" khi gửi DELETE
+      });
+
+      // Xóa trên giao diện
+      setComments(comments.filter((c) => c.id !== commentId));
+    } catch (err) {
+      console.error("Lỗi xóa bình luận", err);
+      alert("Không thể xóa bình luận");
+    }
+  };
+  console.log(post);
 
   if (loading)
     return (
@@ -179,7 +215,6 @@ function DetailPost() {
       <div className="layout-container flex h-full grow flex-col">
         <div className="px-4 md:px-10 lg:px-40 flex flex-1 justify-center py-4 sm:py-1">
           <div className="layout-content-container flex flex-col w-full max-w-[960px] flex-1 gap-6">
-            {/* === BẮT ĐẦU CHI TIẾT BÀI === */}
             <div className="flex flex-col gap-4 bg-white dark:bg-background-dark rounded-xl p-4 sm:p-6 shadow-sm">
               <h1 className="text-[#111418] dark:text-white tracking-tight text-[28px] md:text-[32px] font-bold leading-tight text-left">
                 {post.title}
@@ -202,7 +237,7 @@ function DetailPost() {
                       {post.creator?.displayName}
                     </p>
                     <p className="text-[#617589] dark:text-gray-400 text-sm font-normal leading-normal">
-                      {timeAgo(post.created_at)}
+                      <TimeAgo datetime={post.created_at} locale="vi" />
                     </p>
                   </div>
 
@@ -217,7 +252,6 @@ function DetailPost() {
                 </div>
               </div>
 
-              {/* Nút thích / trả lời giữ nguyên */}
               <div className="@container pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
                 <div className="gap-2 flex flex-wrap justify-start">
                   <button
@@ -271,7 +305,6 @@ function DetailPost() {
                 {comments.length} Phản hồi
               </h2>
 
-              {/* Hiển thị danh sách bình luận */}
               <div
                 ref={containerRef}
                 className="max-h-[500px] overflow-y-auto "
@@ -295,13 +328,47 @@ function DetailPost() {
                         <p className="text-[#111418] dark:text-white text-sm font-bold leading-normal tracking-[0.015em]">
                           {comment.user?.displayName || "Người dùng"}
                         </p>
+
                         <p className="text-[#617589] dark:text-gray-400 text-sm font-normal leading-normal">
                           <TimeAgo datetime={comment.created_at} locale="vi" />
                         </p>
+                        <div className="ml-auto relative">
+                          <span
+                            className="material-symbols-outlined cursor-pointer text-gray-500 hover:text-gray-700"
+                            onClick={() =>
+                              setOpenMenuId(
+                                openMenuId === comment.id ? null : comment.id
+                              )
+                            }
+                          >
+                            more_vert
+                          </span>
+
+                          {/* MENU */}
+                          {openMenuId === comment.id && (
+                            <div className="absolute right-0 mt-2 w-36 bg-white border rounded-xl shadow-md z-50">
+                              {(comment.user_id === user.id ||
+                                myRole === "admin" ||
+                                myRole === "owner" || // owner cũng được phép xóa
+                                post.creator.id === user.id) && (
+                                <button
+                                  className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50"
+                                  onClick={() =>
+                                    handleDeleteComment(comment.id)
+                                  }
+                                >
+                                  Xóa bình luận
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
+
                       <p className="text-[#343A40] dark:text-gray-300 text-base font-normal leading-relaxed">
                         {comment.content}
                       </p>
+
                       <div className="flex w-full flex-row items-center justify-start gap-6 pt-2">
                         <div
                           onClick={() => handleToggleLikeComment(comment.id)}
@@ -331,7 +398,7 @@ function DetailPost() {
                 ))}
                 <div ref={commentsEndRef} />
               </div>
-              {/* Ô nhập bình luận */}
+
               <div className="flex flex-col gap-4 bg-white dark:bg-background-dark rounded-xl p-4 sm:p-6 shadow-sm mt-6">
                 <h3 className="text-[#111418] dark:text-white text-lg font-bold">
                   Viết phản hồi của bạn

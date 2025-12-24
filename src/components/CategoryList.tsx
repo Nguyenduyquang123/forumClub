@@ -4,7 +4,7 @@ import { useState } from "react";
 const CategoryList = () => {
   const [categories] = useState([
     { name: "Trang chủ", path: "/" },
-    { name: "Danh sách câu lạc bộ", path: "/clubs" },
+    { name: "Danh sách câu lạc bộ", path: "/list-clubs" },
   ]);
 
   return (
